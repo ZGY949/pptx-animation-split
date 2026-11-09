@@ -1,0 +1,89 @@
+# PPTX Animation Split
+
+把带动画的 PPTX 拆成静态幻灯片：保留每张源页的初始状态，以及各次点击结束后的状态，便于课件分发、打印或后续导出 PDF。
+
+本项目是受 [PPspliT](https://github.com/maxonthegit/PPspliT) 启发、借助 AI 开发的 Python 工具，独立于原项目维护。它直接处理 PPTX，不需要启动 PowerPoint，也不是 PowerPoint 插件。
+
+当前版本：`0.1.0a1`，发布准备版。只支持部分动画。采用 [MIT 许可证](LICENSE)，保留[来源致谢](ATTRIBUTION.md)；发布状态见[发布清单](docs/RELEASE_CHECKLIST.md)。
+
+## 快速使用
+
+需要 Python 3.10 或更新版本。运行工具只用 Python 标准库，不需要安装第三方运行依赖。当前本地验证环境为 macOS、Python 3.12，已在 WPS Office 12.1.29182 中核对演示课件与真实课件重点步骤；其他系统和演示软件尚待验证。
+
+下载项目 ZIP 并解压，在终端进入项目文件夹后执行：
+
+```sh
+python3 --version
+python3 -m pptx_animation_split --help
+python3 -m pptx_animation_split split examples/demo.pptx demo-split.pptx
+```
+
+Windows 可将命令中的 `python3` 换为 `py -3`。演示课件应由 1 页变为 3 页：题目和提示 → 答案出现 → 提示退出。`split` 会自动检查输出文件结构和已支持的动画状态。
+
+处理自己的课件时，使用完整路径，并给输出起一个新名字：
+
+```sh
+python3 -m pptx_animation_split split "/路径/源课件.pptx" "/路径/源课件_静态版.pptx"
+```
+
+输出不能与源文件相同，也不能覆盖已有文件。先生成临时结果，校验通过后再保存；输出目录必须已经存在。最终保存使用同目录硬链接以防覆盖；不支持硬链接的文件系统会报告错误，可改用本机磁盘目录。
+
+拆分完请用实际使用的演示软件打开结果，核对公式、答案出现顺序、段落位置和图片裁剪。程序校验不能代替视觉检查。
+
+## 另外两个命令
+
+重新校验已有结果：
+
+```sh
+python3 -m pptx_animation_split verify "/路径/源课件.pptx" "/路径/源课件_静态版.pptx"
+```
+
+按放映顺序抽查第 1、3～5 页文字：
+
+```sh
+python3 -m pptx_animation_split peek "/路径/源课件_静态版.pptx" 1 3-5
+```
+
+文字抽查会读到透明占位段落里的文字，不能用于判断文字是否可见。
+
+| 退出码 | 含义 |
+| --- | --- |
+| `0` | 本命令已完成；拆分和校验仅代表检查范围内通过 |
+| `1` | 文件、转换或校验失败；拆分命令不保存失败结果 |
+| `2` | 命令参数用法错误 |
+| `3` | 检测到未支持效果，需要人工核对；拆分结果仍会保存 |
+
+## 支持范围
+
+- 进入、退出、分组显隐，以及部分按段落显示或隐藏的动画。
+- 公式的兼容分支、旧式嵌入公式预览和段落占位；保留原生结构，不把公式改写为普通文字。
+- 部分文字变色、按角度旋转、图片及分组缩放。
+- 满足特定条件的顶层对象单次直线移动。
+
+具体条件和已知限制见[支持范围说明](docs/LIMITATIONS.md)。不支持旧版 `.ppt`、`.pptm` 或加密文件；不直接导出 PDF，不保留动画播放过程，也不保证完整还原所有 PowerPoint 效果。
+
+工具在本地处理文件，不主动上传课件。输出会保留源课件的媒体、嵌入对象和部分备注；隐藏段落也可能仍含原文字，因此输出不是脱敏或彻底删除内容的工具。
+
+## 可选安装
+
+如果希望离开项目文件夹也能调用，可在自己的 Python 虚拟环境中安装本地项目：
+
+```sh
+python3 -m pip install .
+pptx-animation-split --version
+pptx-animation-split split "/路径/源课件.pptx" "/路径/源课件_静态版.pptx"
+```
+
+这是本地安装，不代表已在 PyPI 发布。安装时构建工具可能需要联网下载；直接使用前面的 `python3 -m` 方式不需要安装。
+
+## 测试与来源
+
+在项目根目录运行：
+
+```sh
+python3 -m unittest discover -s tests -v
+```
+
+现有测试覆盖公式显隐、段落占位、移动缩放及命令行的文件保护。查看[验证记录](docs/VALIDATION.md)、[贡献说明](CONTRIBUTING.md)和[来源致谢](ATTRIBUTION.md)。
+
+感谢 Massimo Rimondini 的 PPspliT。作者关于独立实现和署名要求的说明见[原项目讨论](https://github.com/maxonthegit/PPspliT/issues/29#issuecomment-6727916615)。本项目不代表原作者提供支持或背书。

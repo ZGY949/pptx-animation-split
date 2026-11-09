@@ -1,0 +1,10 @@
+{
+  "captured_on": "2026-11-09",
+  "source": "Existing local pptx-animation-split skill scripts",
+  "sha256": {
+    "peek.py": "56b9caa2b7da4cb7563bc83f3f2520786eee3a7020750be5f6dfd27de6ce40df",
+    "ppsplit.py": "a6ede637a4aee47f1d2ea369c6201e12e1824e6e097430fced6af669d802696f",
+    "test_ppsplit.py": "7ec34d89cb01c7c3aef12433c9782319070696b78d84d380949fb6073eb28fa3",
+    "verify.py": "a00ed553104ee01fa54fb5dfcdc9e1ed09065521aabce4f127529ef043e8a598"
+  }
+}

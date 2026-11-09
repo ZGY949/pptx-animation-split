@@ -1,0 +1,28 @@
+[build-system]
+requires = ["setuptools>=77"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "pptx-animation-split"
+dynamic = ["version"]
+description = "Split PPTX animation click steps into static slides using Python."
+readme = "README.md"
+requires-python = ">=3.10"
+dependencies = []
+authors = [{name = "ZGY949"}]
+license = "MIT"
+license-files = ["LICENSE", "ATTRIBUTION.md"]
+classifiers = [
+    "Development Status :: 3 - Alpha",
+    "Programming Language :: Python :: 3",
+    "Topic :: Multimedia :: Graphics :: Presentation",
+]
+
+[project.scripts]
+pptx-animation-split = "pptx_animation_split.cli:main"
+
+[tool.setuptools.packages.find]
+include = ["pptx_animation_split*"]
+
+[tool.setuptools.dynamic]
+version = {attr = "pptx_animation_split.__version__"}
