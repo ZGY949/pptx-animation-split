@@ -309,13 +309,15 @@ class GeometryRegressionTests(unittest.TestCase):
         output = clone_and_render(ET.tostring(root), groups, 0)
         self.assertEqual(signature(shape_index(output)[('1', ())][0]), signature(picture))
 
-    def test_curved_motion_is_reported_instead_of_guessed(self):
+    def test_cubic_motion_uses_its_absolute_layout_endpoint(self):
         root, picture = self.fixture()
         self.add_behavior(root, 'path', 'animMotion', {'origin': 'layout', 'path': 'M 0 0 C 0.1 0.1 0.2 0.3 0.4 0.5 E'})
         groups, notes = parse_slide_animation(root)
-        self.assertTrue(notes)
+        self.assertEqual(notes, [])
         output = clone_and_render(ET.tostring(root), groups, 0, (10000, 6000))
-        self.assertEqual(signature(shape_index(output)[('1', ())][0]), signature(picture))
+        transform = shape_index(output)[('1', ())][0].find(P + 'spPr/' + A + 'xfrm')
+        self.assertEqual(transform.find(A + 'off').attrib, {'x': '5000', 'y': '5000'})
+        self.assertEqual(check_state(root, output, groups, 0, (10000, 6000)), [])
 
     def test_nested_motion_is_reported_instead_of_using_slide_coordinates(self):
         root, group = self.fixture(grouped=True)

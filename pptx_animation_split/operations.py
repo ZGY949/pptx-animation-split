@@ -26,7 +26,7 @@ def unsupported_effects(source):
     return notes
 
 
-def split_file(source, destination, log=print):
+def split_file(source, destination, log=print, allow_partial=False):
     source = input_file(source)
     destination = Path(destination).expanduser()
     if destination.suffix.lower() != '.pptx':
@@ -39,6 +39,10 @@ def split_file(source, destination, log=print):
         raise FileExistsError('输出文件已存在，请使用新文件名：%s' % destination)
     if not destination.parent.is_dir():
         raise ValueError('输出目录不存在：%s' % destination.parent)
+    warnings = unsupported_effects(source)
+    if warnings and not allow_partial:
+        details = '\n'.join('%s：%s' % (part, warning) for part, warning in warnings[:30])
+        raise ValueError('存在未支持动画，未生成输出。仅在需要人工核对的草稿时使用 --allow-partial。\n' + details)
     descriptor, temporary_name = tempfile.mkstemp(
         prefix='.pptx-split-', suffix='.pptx', dir=destination.parent
     )

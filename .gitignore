@@ -21,3 +21,4 @@ dist/
 *.xlsx
 *.zip
 !examples/demo.pptx
+!examples/animation-cases.pptx

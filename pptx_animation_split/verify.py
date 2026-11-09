@@ -4,7 +4,7 @@ import posixpath
 import zipfile
 import xml.etree.ElementTree as ET
 
-from ._core import A, CT, MC, P, VML, SHAPE_TAGS, animation_visibility, apply_emphasis, parse_slide_animation, scale_group_text, slide_order
+from ._core import A, CT, MC, P, R, VML, SHAPE_TAGS, active_animation_groups, all_animation_groups, animation_visibility, apply_emphasis, parse_slide_animation, relationship_part, resolve_part, scale_group_text, slide_order
 
 
 def signature(element):
@@ -75,7 +75,7 @@ def check_state(source_root, output_root, groups, step, slide_size=None):
     output = shape_index(output_root)
     whole_events = {}
     paragraph_events = {}
-    for group_index, effects in enumerate(groups):
+    for group_index, effects in enumerate(all_animation_groups(groups), -1):
         for effect in effects:
             if effect['cls'] not in ('entr', 'exit') or not effect['spid']:
                 continue
@@ -83,15 +83,15 @@ def check_state(source_root, output_root, groups, step, slide_size=None):
             if not any(key[0] == sid for key in source):
                 errors.append('源动画目标不存在：%s' % sid)
             if effect['prg'] is None:
-                whole_events.setdefault(sid, []).append((group_index, effect['cls']))
+                whole_events.setdefault(sid, []).append((group_index, effect['cls'], effect.get('order', 0)))
             else:
                 for paragraph_index in range(effect['prg'][0], effect['prg'][1] + 1):
                     key = (sid, paragraph_index)
-                    paragraph_events.setdefault(key, []).append((group_index, effect['cls']))
+                    paragraph_events.setdefault(key, []).append((group_index, effect['cls'], effect.get('order', 0)))
 
     def visible_after(events):
-        visible = events[0][1] == 'exit'
-        for group_index, kind in events:
+        visible = min(events, key=lambda event: event[2])[1] == 'exit'
+        for group_index, kind, _ in events:
             if group_index <= step:
                 visible = kind == 'entr'
         return visible
@@ -111,14 +111,15 @@ def check_state(source_root, output_root, groups, step, slide_size=None):
             continue
         actual = output[key][0]
         original = copy.deepcopy(original)
-        for effects in groups[:step + 1]:
+        reference = copy.deepcopy(original)
+        for effects in active_animation_groups(groups, step):
             for effect in effects:
                 if effect['spid'] in ancestors:
                     for change in effect.get('changes') or []:
                         if change['kind'] == 'scale':
                             scale_group_text(original, change['x'] / 100000)
                 if effect['cls'] in ('emph', 'path') and effect['spid'] == sid and effect.get('changes'):
-                    apply_emphasis(original, effect, slide_size)
+                    apply_emphasis(original, effect, slide_size, reference)
         for prop in ('spPr', 'grpSpPr', 'xfrm', 'blipFill', 'style'):
             if signature(original.find(P + prop)) != signature(actual.find(P + prop)):
                 errors.append('对象 %s 的位置、图片裁剪或样式改变：%s' % (sid, prop))
@@ -179,6 +180,48 @@ def check_legacy_state(source, source_part, original, output, output_part, actua
     return errors
 
 
+def check_navigation(source, output, pages_by_source):
+    errors = []
+
+    def relations(archive, owner):
+        part = relationship_part(owner)
+        if part not in archive.namelist():
+            return {}
+        return {element.get('Id'): element for element in ET.fromstring(archive.read(part))}
+
+    for original_part, output_parts in pages_by_source.items():
+        for rid, relation in relations(source, original_part).items():
+            if not relation.get('Type', '').endswith('/slide') or relation.get('TargetMode') == 'External':
+                continue
+            target = resolve_part(original_part, relation.get('Target', ''))
+            expected = pages_by_source.get(target, [])
+            for output_part in output_parts:
+                actual = relations(output, output_part).get(rid)
+                actual_target = resolve_part(output_part, actual.get('Target', '')) if actual is not None else None
+                if not expected or actual_target != expected[0]:
+                    errors.append('页内跳转目标错误：%s (%s)' % (output_part, rid))
+    source_pres = ET.fromstring(source.read('ppt/presentation.xml'))
+    output_pres = ET.fromstring(output.read('ppt/presentation.xml'))
+    source_relations = relations(source, 'ppt/presentation.xml')
+    output_relations = relations(output, 'ppt/presentation.xml')
+    actual_shows = {show.get('id'): show for show in output_pres.findall(P + 'custShowLst/' + P + 'custShow')}
+    for show in source_pres.findall(P + 'custShowLst/' + P + 'custShow'):
+        expected = []
+        for item in show.findall(P + 'sldLst/' + P + 'sld'):
+            relation = source_relations.get(item.get(R + 'id'))
+            target = resolve_part('ppt/presentation.xml', relation.get('Target', '')) if relation is not None else None
+            expected.extend(pages_by_source.get(target, []))
+        actual = []
+        output_show = actual_shows.get(show.get('id'))
+        if output_show is not None:
+            for item in output_show.findall(P + 'sldLst/' + P + 'sld'):
+                relation = output_relations.get(item.get(R + 'id'))
+                actual.append(resolve_part('ppt/presentation.xml', relation.get('Target', '')) if relation is not None else None)
+        if actual != expected or output_show is None or output_show.get('name') != show.get('name'):
+            errors.append('自定义放映的页面顺序或目标错误：%s' % show.get('name', show.get('id')))
+    return errors
+
+
 def verify(src, dst, log=print):
     errors = []
     warnings = []
@@ -232,11 +275,13 @@ def verify(src, dst, log=print):
         slide_size = (int(size.get('cx')), int(size.get('cy')))
         expected_count = 0
         checked = 0
+        pages_by_source = {}
         for source_number, name in enumerate(source_slides, 1):
             original = ET.fromstring(source.read(name))
             groups, notes = parse_slide_animation(original)
             warnings.extend('%s：%s' % (name, note) for note in notes)
             previous = None
+            start = expected_count
             for step in range(-1, len(groups)):
                 output_index = expected_count
                 expected_count += 1
@@ -244,21 +289,25 @@ def verify(src, dst, log=print):
                     errors.append('输出缺页：源第%d页、步骤%d' % (source_number, step + 1))
                     continue
                 actual = ET.fromstring(output.read(output_slides[output_index]))
-                if actual.find(P + 'timing') is not None:
+                if any(True for _ in actual.iter(P + 'timing')):
                     errors.append('输出第%d页仍有动画' % (output_index + 1))
+                if any(True for _ in actual.iter(P + 'transition')):
+                    errors.append('输出第%d页仍有切换或自动翻页设置' % (output_index + 1))
                 state_errors = check_state(original, actual, groups, step, slide_size)
                 state_errors.extend(check_legacy_state(source, name, original, output, output_slides[output_index], actual))
                 errors.extend('输出第%d页：%s' % (output_index + 1, error) for error in state_errors)
                 current = signature(actual.find(P + 'cSld/' + P + 'spTree'))
                 if step >= 0 and current == previous and any(e['cls'] in ('entr', 'exit') or e.get('changes') for e in groups[step]):
-                    if not state_errors and transient_visibility_step(groups, step):
-                        notices.append('输出第%d页与前页终态相同：源动画在同次点击内出现后退出，保留点击步骤' % (output_index + 1))
+                    if not state_errors:
+                        notices.append('输出第%d页与前页终态相同：对象状态校验通过，保留该点击步骤' % (output_index + 1))
                     else:
                         errors.append('输出第%d页与前页相同，动画没有产生变化' % (output_index + 1))
                 previous = current
                 checked += 1
+            pages_by_source[name] = output_slides[start:expected_count]
         if expected_count != len(output_slides):
             errors.append('输出页数不符：应为%d，实际%d' % (expected_count, len(output_slides)))
+        errors.extend(check_navigation(source, output, pages_by_source))
         for name in source.namelist():
             if name.startswith('ppt/media/') and (name not in names or source.read(name) != output.read(name)):
                 errors.append('媒体内容丢失或被修改：%s' % name)

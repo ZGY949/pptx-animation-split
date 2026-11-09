@@ -114,6 +114,9 @@ class CommandLineTests(unittest.TestCase):
         source = self.root / 'unsupported.pptx'
         rewrite(self.source, source, 'ppt/slides/slide1.xml', change)
         status, _, error = self.run_cli('split', source, self.destination)
+        self.assertEqual(status, 1, error)
+        self.assertFalse(self.destination.exists())
+        status, _, error = self.run_cli('split', source, self.destination, '--allow-partial')
         self.assertEqual(status, 3, error)
         self.assertTrue(self.destination.is_file())
         self.assertEqual(self.run_cli('verify', source, self.destination)[0], 3)

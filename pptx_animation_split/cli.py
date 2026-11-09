@@ -18,6 +18,7 @@ def parser():
     split = commands.add_parser('split', help='拆分并自动校验结果')
     split.add_argument('source', help='源 .pptx 文件')
     split.add_argument('destination', help='尚不存在的输出 .pptx 路径')
+    split.add_argument('--allow-partial', action='store_true', help='允许生成含未支持效果的草稿；返回退出码 3，须人工核对')
     check = commands.add_parser('verify', help='校验已拆分文件的结构和动画状态')
     check.add_argument('source', help='源 .pptx 文件')
     check.add_argument('destination', help='拆分后的 .pptx 文件')
@@ -31,7 +32,7 @@ def main(argv=None):
     args = parser().parse_args(argv)
     try:
         if args.command == 'split':
-            per_slide, notes, total = split_file(args.source, args.destination)
+            per_slide, notes, total = split_file(args.source, args.destination, allow_partial=args.allow_partial)
             for name, count, groups in per_slide:
                 print('%s：%d 个动画组 → %d 页' % (name.rsplit('/', 1)[-1], groups, count))
             print('已保存 %d 页：%s' % (total, args.destination))

@@ -5,8 +5,11 @@ PPTX Animation Split — Python conversion engine; see ATTRIBUTION.md
 支持进入、退出及部分强调效果在每次点击结束后的静态状态。
 """
 import zipfile, re, io, posixpath
+import copy
 import xml.etree.ElementTree as ET
 from xml.sax.saxutils import quoteattr
+
+from ._motion import motion_endpoint
 
 CT = 'http://schemas.openxmlformats.org/package/2006/content-types'
 PR = 'http://schemas.openxmlformats.org/package/2006/relationships'
@@ -19,6 +22,28 @@ A = '{%s}' % DML
 R = '{%s}' % OD
 MC = '{http://schemas.openxmlformats.org/markup-compatibility/2006}'
 VML = '{urn:schemas-microsoft-com:vml}'
+
+
+class AnimationGroups(list):
+    def __init__(self):
+        super().__init__()
+        self.initial = []
+
+
+def all_animation_groups(groups):
+    return [getattr(groups, 'initial', [])] + list(groups)
+
+
+def active_animation_groups(groups, upto):
+    return [getattr(groups, 'initial', [])] + list(groups[:max(0, upto + 1)])
+
+
+def resolve_part(owner, target):
+    return posixpath.normpath(posixpath.join(posixpath.dirname(owner), target)).lstrip('/')
+
+
+def relationship_part(owner):
+    return posixpath.join(posixpath.dirname(owner), '_rels', posixpath.basename(owner) + '.rels')
 
 
 def collect_ns(data):
@@ -77,11 +102,11 @@ def emphasis_changes(effect):
     behaviors = effect.find(q('childTnLst'))
     if behaviors is None:
         return None
-    if effect.get('fill') == 'remove' or effect.get('autoRev') == '1':
+    if effect.get('fill') == 'remove' or effect.get('autoRev') in ('1', 'true'):
         return []
     for behavior in behaviors:
         timing = behavior.find(q('cBhvr') + '/' + q('cTn'))
-        if timing is not None and (timing.get('fill') == 'remove' or timing.get('autoRev') == '1'):
+        if timing is not None and (timing.get('fill') == 'remove' or timing.get('autoRev') in ('1', 'true')):
             continue
         if effect.get('fill') == 'remove':
             continue
@@ -115,8 +140,8 @@ def motion_changes(effect):
         return None
     motion = behaviors[0]
     timing = motion.find(q('cBhvr') + '/' + q('cTn'))
-    if effect.get('fill') == 'remove' or effect.get('autoRev') == '1' or (
-        timing is not None and (timing.get('fill') == 'remove' or timing.get('autoRev') == '1')
+    if effect.get('fill') == 'remove' or effect.get('autoRev') in ('1', 'true') or (
+        timing is not None and (timing.get('fill') == 'remove' or timing.get('autoRev') in ('1', 'true'))
     ):
         return []
     if motion.get('origin') != 'layout' or motion.get('rAng', '0') != '0':
@@ -124,13 +149,27 @@ def motion_changes(effect):
     attributes = [node.text for node in motion.iter(q('attrName'))]
     if attributes not in ([], ['ppt_x', 'ppt_y']):
         return None
-    number = r'[-+]?(?:\d+(?:\.\d*)?|\.\d+)(?:[eE][-+]?\d+)?'
-    match = re.fullmatch(r'\s*M\s*(' + number + r')\s+(' + number +
-                         r')\s+L\s*(' + number + r')\s+(' + number + r')\s*(?:E\s*)?',
-                         motion.get('path', ''))
-    if match is None:
+    endpoint = motion_endpoint(motion.get('path', ''))
+    if endpoint is None:
         return None
-    return [{'kind': 'translation', 'x': float(match.group(3)), 'y': float(match.group(4))}]
+    return [{'kind': 'translation', 'x': endpoint[0], 'y': endpoint[1]}]
+
+
+def has_local_font_sizes(shape):
+    for body in shape.iter(P + 'txBody'):
+        for paragraph in body.findall(A + 'p'):
+            paragraph_properties = paragraph.find(A + 'pPr')
+            level = paragraph_properties.get('lvl', '0') if paragraph_properties is not None else '0'
+            default = paragraph.find(A + 'pPr/' + A + 'defRPr')
+            if default is None or default.get('sz') is None:
+                default = body.find(A + 'lstStyle/' + A + 'lvl%spPr/' % (int(level) + 1) + A + 'defRPr')
+            for run in paragraph:
+                if run.tag not in (A + 'r', A + 'fld'):
+                    continue
+                props = run.find(A + 'rPr')
+                if (props is None or props.get('sz') is None) and (default is None or default.get('sz') is None):
+                    return False
+    return True
 
 
 def parse_slide_animation(root):
@@ -138,20 +177,104 @@ def parse_slide_animation(root):
     groups: list of list of dict(effect)"""
     timing = root.find(q('timing'))
     if timing is None:
+        if any(True for _ in root.iter(q('timing'))):
+            return [], ['兼容分支中的动画时间树尚未支持']
         return [], []
+    notes = []
+    if any(node.get('nodeType') == 'interactiveSeq' for node in timing.iter(q('cTn'))):
+        notes.append('对象触发的交互动画不能可靠展开为单一点击序列')
     main = None
     for cTn in timing.iter(q('cTn')):
         if cTn.get('nodeType') == 'mainSeq':
             main = cTn
             break
     if main is None:
-        return [], []
+        if all(node.tag in {q(tag) for tag in ('timing', 'tnLst', 'par', 'cTn')} and
+               (node.tag != q('cTn') or node.get('nodeType') == 'tmRoot') for node in timing.iter()):
+            return [], notes
+        return [], notes + ['动画时间树缺少可识别的主序列，不能当作无动画页面']
     ch = main.find(q('childTnLst'))
     if ch is None:
-        return [], []
-    groups = []
-    notes = []
-    motion_targets = set()
+        return [], notes + ['主动画序列缺少时间节点列表']
+    groups = AnimationGroups()
+    covered = set()
+    parents = {child: parent for parent in timing.iter() for child in parent}
+    shape_parents = {child: parent for parent in root.iter() for child in parent}
+    if sum(node.get('nodeType') == 'mainSeq' for node in timing.iter(q('cTn'))) != 1:
+        notes.append('存在多个主动画序列，尚未支持')
+    if any(main not in sequence.iter() for sequence in timing.iter(q('seq'))):
+        notes.append('主序列之外或嵌套的顺序时间节点尚未支持')
+    if any(True for _ in timing.iter(q('endCondLst'))):
+        notes.append('按条件提前结束的动画尚未支持')
+    identifiers = [node.get('id') for node in timing.iter(q('cTn')) if node.get('id')]
+    if len(identifiers) != len(set(identifiers)):
+        notes.append('动画时间节点 ID 重复，事件依赖不明确')
+    for node in timing.iter(q('cTn')):
+        if node.get('repeatCount') not in (None, '1000') or node.get('repeatDur') is not None:
+            notes.append('动画含重复播放条件，终态尚未验证')
+        if node.get('spd') not in (None, '100000') or node.get('tmFilter') or node.get('evtFilter'):
+            notes.append('自定义时间速度或时间筛选尚未支持')
+    time_nodes = {node.get('id'): node for node in timing.iter(q('cTn')) if node.get('id')}
+    starts = {}
+    ends = {}
+    pending = set()
+
+    def end_time(node):
+        if id(node) in ends:
+            return ends[id(node)]
+        key = ('end', id(node))
+        if key in pending:
+            notes.append('动画时间依赖存在循环')
+            return 0
+        pending.add(key)
+        duration = node.get('dur')
+        if duration is not None and duration.isdecimal():
+            result = start_time(node) + int(duration)
+        else:
+            if duration not in (None, '0'):
+                notes.append('事件依赖的动画结束时间不确定')
+            child_times = node.find(q('childTnLst'))
+            child_nodes = [child for child in child_times.iter(q('cTn'))] if child_times is not None else []
+            result = max([start_time(node)] + [end_time(child) for child in child_nodes])
+        pending.remove(key)
+        ends[id(node)] = result
+        return result
+
+    def start_time(node):
+        if id(node) in starts:
+            return starts[id(node)]
+        key = ('start', id(node))
+        if key in pending:
+            notes.append('动画时间依赖存在循环')
+            return 0
+        pending.add(key)
+        ancestor = parents.get(node)
+        while ancestor is not None and ancestor.tag != q('cTn'):
+            ancestor = parents.get(ancestor)
+        base = start_time(ancestor) if ancestor is not None else 0
+        conditions = node.findall(q('stCondLst') + '/' + q('cond'))
+        choices = []
+        for condition in conditions:
+            delay = condition.get('delay', '0')
+            if delay == 'indefinite':
+                continue
+            if not delay.isdecimal():
+                notes.append('无法解释动画延时：%s' % delay)
+                continue
+            event = condition.get('evt')
+            reference = condition.find(q('tn'))
+            referenced = time_nodes.get(reference.get('val')) if reference is not None else None
+            if event in ('onBegin', 'onEnd') and referenced is not None:
+                origin = start_time(referenced) if event == 'onBegin' else end_time(referenced)
+            elif event is None:
+                origin = base
+            else:
+                notes.append('无法解释动画的事件触发条件：%s' % event)
+                continue
+            choices.append(origin + int(delay))
+        starts[id(node)] = min(choices) if choices else base
+        pending.remove(key)
+        return starts[id(node)]
     for par in ch.findall(q('par')):
         c = par.find(q('cTn'))
         if c is None:
@@ -160,6 +283,7 @@ def parse_slide_animation(root):
         for ec in c.iter(q('cTn')):
             if 'presetID' not in ec.attrib:
                 continue
+            covered.add(id(ec))
             cls = ec.get('presetClass')
             tgt = None
             spid = None
@@ -175,46 +299,93 @@ def parse_slide_animation(root):
                             prg = (int(r.get('st', 0)), int(r.get('end', 0)))
                         except ValueError:
                             prg = None
+                if any(node.tag in (q('charRg'), q('subSp'), q('oleChartEl')) for node in t.iter()):
+                    notes.append('按字符或对象内部元素触发的动画尚未支持')
+                if tx is not None and prg is None:
+                    notes.append('无法识别动画的文字范围')
             ae = ec.find('.//' + q('animEffect'))
             filt = ae.get('filter', '') if ae is not None else ''
             changes = emphasis_changes(ec) if cls == 'emph' else motion_changes(ec) if cls == 'path' else None
+            if prg is not None and any(change['kind'] != 'fontcolor' for change in changes or []):
+                changes = None
+            targets = {target.get('spid') for target in ec.iter(q('spTgt'))}
+            if len(targets) != 1 or not spid:
+                notes.append('动画目标不唯一或缺失 (preset %s)' % ec.get('presetID'))
+            tree = root.find(q('cSld') + '/' + q('spTree'))
+            matches = [element for _, element, sid in shape_elements(tree) if sid == spid] if tree is not None else []
+            if not matches:
+                notes.append('动画目标对象不存在：%s' % spid)
+            if prg is not None and (prg[0] < 0 or prg[1] < prg[0] or any(
+                prg[1] >= len(shape.findall(q('txBody') + '/' + A + 'p')) for shape in matches
+            )):
+                notes.append('动画段落范围超出目标文字范围')
+            for node in ec.iter(q('cTn')):
+                if cls in ('entr', 'exit') and (node.get('autoRev') in ('1', 'true') or node.get('fill') == 'remove'):
+                    notes.append('进入或退出动画在结束后复原，终态尚未支持 (preset %s)' % ec.get('presetID'))
             if changes and any(change['kind'] in ('translation', 'scale') for change in changes):
-                tree = root.find(q('cSld') + '/' + q('spTree'))
-                matches = [element for _, element, sid in shape_elements(tree) if sid == spid] if tree is not None else []
-                parents = {child: parent for parent in root.iter() for child in parent}
                 if not matches:
                     changes = None
                 for shape in matches:
-                    if any(change['kind'] == 'scale' for change in changes or []) and shape.tag not in (q('pic'), q('grpSp')):
+                    if any(change['kind'] == 'scale' for change in changes or []) and shape.tag not in (q('pic'), q('grpSp'), q('sp')):
                         changes = None
                     for change in list(changes or []):
-                        if change['kind'] != 'scale' or shape.tag != q('grpSp'):
+                        if change['kind'] != 'scale' or shape.tag not in (q('grpSp'), q('sp')):
                             continue
                         runs = [run for run in shape.iter() if run.tag in (A + 'r', A + 'fld')]
-                        if runs and (change['x'] != change['y'] or any(
-                            run.find(A + 'rPr') is None or run.find(A + 'rPr').get('sz') is None for run in runs
-                        )):
+                        if runs and (change['x'] != change['y'] or not has_local_font_sizes(shape)):
                             changes = None
+                        if any(node.tag.startswith('{http://schemas.openxmlformats.org/officeDocument/2006/math}') for node in shape.iter()):
+                            changes = None
+                        if shape.tag == q('sp'):
+                            transform = shape.find(P + 'spPr/' + A + 'xfrm')
+                            if transform is None or transform.find(A + 'ext') is None:
+                                changes = None
                     if any(change['kind'] == 'translation' for change in changes or []):
-                        parent = parents.get(shape)
+                        parent = shape_parents.get(shape)
                         while parent is not None:
                             if parent.tag == q('grpSp'):
                                 changes = None
                                 break
-                            parent = parents.get(parent)
-                if changes and cls == 'path':
-                    if spid in motion_targets:
-                        changes = None
-                    else:
-                        motion_targets.add(spid)
+                            parent = shape_parents.get(parent)
+            begin = start_time(ec)
+            finish = begin
+            for timed in ec.iter(q('cTn')):
+                duration = timed.get('dur', '0')
+                if duration.isdecimal():
+                    finish = max(finish, start_time(timed) + int(duration))
+                elif duration != '0':
+                    notes.append('动画效果具有不确定持续时间：%s' % duration)
             effs.append(dict(cls=cls, preset=ec.get('presetID'), sub=ec.get('presetSubtype'),
                              node=ec.get('nodeType'), spid=spid, prg=prg, filter=filt,
-                             changes=changes))
+                             changes=changes, start=begin, end=finish, order=len(covered)))
             if cls not in ('entr', 'exit') and not (cls in ('emph', 'path') and changes is not None):
                 notes.append('unsupported class %s (preset %s)' % (cls, ec.get('presetID')))
         if effs:
-            groups.append(effs)
-    return groups, notes
+            if effs[0].get('node') in ('withEffect', 'afterEffect', 'withGroup', 'afterGroup'):
+                (groups[-1] if groups else groups.initial).extend(effs)
+            else:
+                groups.append(effs)
+    for node in timing.iter(q('cTn')):
+        if 'presetID' in node.attrib and id(node) not in covered:
+            notes.append('主序列之外的动画未处理 (preset %s)' % node.get('presetID'))
+    for behavior in timing.iter():
+        if behavior.tag not in {q(tag) for tag in ('anim', 'animClr', 'animEffect', 'animMotion', 'animRot', 'animScale', 'set', 'cmd', 'audio', 'video')}:
+            continue
+        ancestor = parents.get(behavior)
+        while ancestor is not None and id(ancestor) not in covered:
+            ancestor = parents.get(ancestor)
+        if ancestor is None:
+            notes.append('未归入已识别效果的动画行为：%s' % behavior.tag.rsplit('}', 1)[-1])
+    for effects in all_animation_groups(groups):
+        for index, left in enumerate(effects):
+            for right in effects[index + 1:]:
+                if left['spid'] != right['spid']:
+                    continue
+                same_properties = {change['kind'] for change in left.get('changes') or []} & {change['kind'] for change in right.get('changes') or []}
+                if same_properties and max(left['start'], right['start']) < min(left['end'], right['end']):
+                    notes.append('同一对象的同一属性有重叠动画，叠加规则尚未验证：%s' % left['spid'])
+        effects.sort(key=lambda event: event['start'] if event['cls'] == 'entr' else event['end'])
+    return groups, list(dict.fromkeys(notes))
 
 
 def hide_paragraph(paragraph):
@@ -259,18 +430,19 @@ def slide_order(z):
 def animation_visibility(groups, upto):
     whole = {}
     paragraphs = {}
-    for effects in groups:
-        for effect in effects:
-            if effect['cls'] not in ('entr', 'exit') or not effect['spid']:
-                continue
-            initial = effect['cls'] == 'exit'
-            if effect['prg'] is None:
-                whole.setdefault(effect['spid'], initial)
-            else:
-                states = paragraphs.setdefault(effect['spid'], {})
-                for index in range(effect['prg'][0], effect['prg'][1] + 1):
-                    states.setdefault(index, initial)
-    for effects in groups[:upto + 1]:
+    declared = sorted((effect for effects in all_animation_groups(groups) for effect in effects),
+                      key=lambda effect: effect.get('order', 0))
+    for effect in declared:
+        if effect['cls'] not in ('entr', 'exit') or not effect['spid']:
+            continue
+        initial = effect['cls'] == 'exit'
+        if effect['prg'] is None:
+            whole.setdefault(effect['spid'], initial)
+        else:
+            states = paragraphs.setdefault(effect['spid'], {})
+            for index in range(effect['prg'][0], effect['prg'][1] + 1):
+                states.setdefault(index, initial)
+    for effects in active_animation_groups(groups, upto):
         for effect in effects:
             if effect['cls'] not in ('entr', 'exit') or not effect['spid']:
                 continue
@@ -306,7 +478,7 @@ def scale_group_text(shape, factor):
                 node.set('pos', str(round(int(node.get('pos')) * factor)))
 
 
-def apply_emphasis(shape, effect, slide_size=None):
+def apply_emphasis(shape, effect, slide_size=None, original_shape=None):
     for change in effect.get('changes') or []:
         if change['kind'] in ('rotation', 'translation', 'scale'):
             transform = shape.find(P + 'spPr/' + A + 'xfrm')
@@ -326,15 +498,25 @@ def apply_emphasis(shape, effect, slide_size=None):
             if change['kind'] == 'translation':
                 if slide_size is None:
                     raise ValueError('移动动画缺少幻灯片尺寸')
-                offset.set('x', str(int(offset.get('x')) + round(change['x'] * slide_size[0])))
-                offset.set('y', str(int(offset.get('y')) + round(change['y'] * slide_size[1])))
+                original_transform = None
+                if original_shape is not None:
+                    original_transform = original_shape.find(P + 'spPr/' + A + 'xfrm')
+                    if original_transform is None:
+                        original_transform = original_shape.find(P + 'grpSpPr/' + A + 'xfrm')
+                    if original_transform is None:
+                        original_transform = original_shape.find(P + 'xfrm')
+                original_offset = original_transform.find(A + 'off') if original_transform is not None else offset
+                original_extent = original_transform.find(A + 'ext') if original_transform is not None else extent
+                for axis, dimension, slide_dimension in (('x', 'cx', slide_size[0]), ('y', 'cy', slide_size[1])):
+                    center = int(original_offset.get(axis)) + int(original_extent.get(dimension)) / 2
+                    offset.set(axis, str(round(center + change[axis] * slide_dimension - int(extent.get(dimension)) / 2)))
             else:
                 for coordinate, dimension in (('x', 'cx'), ('y', 'cy')):
                     before = int(extent.get(dimension))
                     after = round(before * change[coordinate] / 100000)
                     offset.set(coordinate, str(int(offset.get(coordinate)) + round((before - after) / 2)))
                     extent.set(dimension, str(after))
-                if shape.tag == q('grpSp'):
+                if shape.tag in (q('grpSp'), q('sp')):
                     scale_group_text(shape, change['x'] / 100000)
         elif change['kind'] == 'fontcolor':
             body = shape.find(P + 'txBody')
@@ -362,9 +544,14 @@ def apply_emphasis(shape, effect, slide_size=None):
 def clone_and_render(xml_bytes, groups, upto, slide_size=None):
     """生成第 upto 个点击步骤之后的状态（upto=-1 表示初始状态）"""
     root = ET.fromstring(xml_bytes)
-    t = root.find(q('timing'))
-    if t is not None:
-        root.remove(t)
+    parents = {child: parent for parent in root.iter() for child in parent}
+    for timing in list(root.iter(q('timing'))):
+        parents[timing].remove(timing)
+    for transition in list(root.iter(q('transition'))):
+        parents[transition].remove(transition)
+    for alternate in reversed(list(root.iter(MC + 'AlternateContent'))):
+        if all(len(branch) == 0 for branch in alternate):
+            parents[alternate].remove(alternate)
     cSld = root.find(q('cSld'))
     spTree = cSld.find(q('spTree')) if cSld is not None else None
     if spTree is None:
@@ -380,12 +567,13 @@ def clone_and_render(xml_bytes, groups, upto, slide_size=None):
         if not any(child.tag in {q(t) for t in SHAPE_TAGS} for child in el.iter()):
             parents[el].remove(el)
 
-    for effects in groups[:upto + 1]:
+    reference_shapes = {id(element): copy.deepcopy(element) for _, element, _ in shape_elements(spTree)}
+    for effects in active_animation_groups(groups, upto):
         for effect in effects:
             if effect['cls'] in ('emph', 'path') and effect.get('changes'):
                 for _, el, sid in shape_elements(spTree):
                     if sid == effect['spid']:
-                        apply_emphasis(el, effect, slide_size)
+                        apply_emphasis(el, effect, slide_size, reference_shapes[id(el)])
 
     for sid, hidden in hidden_paragraphs.items():
         for parent, el, csid in list(shape_elements(spTree)):
@@ -494,9 +682,8 @@ def _split_archive(z, dst, log):
     # presentation.rels 中原始 slide 的 rid
     old_slide_rels = {}
     for rel in list(pres_rels):
-        t = rel.get('Target', '')
-        if re.match(r'slides/slide\d+\.xml$', t):
-            old_slide_rels[rel.get('Id')] = t
+        if rel.get('Type', '').endswith('/slide') and rel.get('TargetMode') != 'External':
+            old_slide_rels[rel.get('Id')] = resolve_part('ppt/presentation.xml', rel.get('Target', ''))
 
     plan = []          # (src_slide_name, step_index)
     per_slide = []
@@ -507,7 +694,7 @@ def _split_archive(z, dst, log):
         cSld = root.find(q('cSld'))
         tree = cSld.find(q('spTree')) if cSld is not None else None
         shapes = list(shape_elements(tree)) if tree is not None else []
-        for effects in groups:
+        for effects in all_animation_groups(groups):
             for effect in effects:
                 if effect['cls'] not in ('entr', 'exit') and not effect.get('changes'):
                     continue
@@ -540,19 +727,15 @@ def _split_archive(z, dst, log):
     sldIdLst = pres.find(q('sldIdLst'))
     if sldIdLst is None:
         sldIdLst = ET.SubElement(pres, q('sldIdLst'))
-    # 记录原 sldId -> 源幻灯片编号（用于自定义放映重映射）
-    old_sldid_to_srcnum = {}
     for e in list(sldIdLst):
-        rid = e.get(R + 'id')
-        tgt = old_slide_rels.get(rid, '')
-        m = re.search(r'slide(\d+)\.xml', tgt)
-        if m:
-            old_sldid_to_srcnum[e.get('id')] = m.group(1)
         sldIdLst.remove(e)
 
     new_pres_entries = []
-    srcnum_to_newids = {}
     first_idx_by_src = {}
+    refs_by_source = {}
+    for idx, (source_part, _) in enumerate(plan, 1):
+        first_idx_by_src.setdefault(source_part, idx)
+        refs_by_source.setdefault(source_part, []).append('rId%d' % (max_rel + idx))
     ct_add = []
     for idx, (s, k) in enumerate(plan, start=1):
         new_name = 'ppt/slides/slide%d.xml' % idx
@@ -561,21 +744,29 @@ def _split_archive(z, dst, log):
         root = clone_and_render(z.read(s), groups, k, slide_size)
         new_slides[new_name] = serialize(root, collect_ns(z.read(s)))
 
-        srcnum_here = re.search(r'slide(\d+)\.xml', s).group(1)
-        first_idx = first_idx_by_src.setdefault(srcnum_here, idx)
+        first_idx = first_idx_by_src[s]
 
         # rels（备注页只保留在该源页的第一张拆分结果上）
-        rels_name = 'ppt/slides/_rels/slide%s.xml.rels' % srcnum_here
+        rels_name = relationship_part(s)
         if rels_name in names:
             rl = ET.fromstring(z.read(rels_name))
             if idx != first_idx:
                 for rel in list(rl):
-                    if 'notesSlide' in rel.get('Target', ''):
+                    if rel.get('Type', '').endswith('/notesSlide'):
                         rl.remove(rel)
             copies = filter_legacy_drawings(z, s, source_root, root, idx, rl, new_slides)
             for original_part, new_part in copies:
                 if '/' + original_part in ct_map:
                     ct_add.append(('/' + new_part, ct_map['/' + original_part]))
+            for relation in rl:
+                if relation.get('TargetMode') == 'External':
+                    continue
+                target = resolve_part(s, relation.get('Target', ''))
+                if relation.get('Type', '').endswith('/slide'):
+                    if target not in first_idx_by_src:
+                        raise ValueError('页内链接指向主放映顺序之外的幻灯片：%s' % target)
+                    target = 'ppt/slides/slide%d.xml' % first_idx_by_src[target]
+                relation.set('Target', posixpath.relpath(target, posixpath.dirname(new_name)))
             new_slides['ppt/slides/_rels/slide%d.xml.rels' % idx] = serialize(rl, collect_ns(z.read(rels_name)))
 
         # content type
@@ -597,8 +788,6 @@ def _split_archive(z, dst, log):
             new_id += 1
         used_ids.add(new_id)
         new_pres_entries.append((rid, str(new_id)))
-        srcnum = re.search(r'slide(\d+)\.xml', s).group(1)
-        srcnum_to_newids.setdefault(srcnum, []).append(str(new_id))
 
     # 重建 sldIdLst
     for rid, nid in new_pres_entries:
@@ -610,19 +799,23 @@ def _split_archive(z, dst, log):
     cust = pres.find(q('custShowLst'))
     if cust is not None:
         for show in cust.findall(q('custShow')):
-            sl = show.find(q('sldIdLst'))
+            sl = show.find(q('sldLst'))
             if sl is None:
-                continue
-            new_ids = []
-            for e in sl.findall(q('sldId')):
-                srcnum = old_sldid_to_srcnum.get(e.get('id'))
-                new_ids += srcnum_to_newids.get(srcnum, [e.get('id')])
-            for e in list(sl.findall(q('sldId'))):
+                raise ValueError('自定义放映缺少可识别的幻灯片列表')
+            new_refs = []
+            for e in sl.findall(q('sld')):
+                source_part = old_slide_rels.get(e.get(R + 'id'))
+                if source_part not in refs_by_source:
+                    raise ValueError('自定义放映引用了主放映顺序之外的幻灯片')
+                new_refs.extend(refs_by_source[source_part])
+            for e in list(sl):
                 sl.remove(e)
-            for nid in new_ids:
-                ne = ET.SubElement(sl, q('sldId'))
-                ne.set('id', nid)
+            for ref in new_refs:
+                ET.SubElement(sl, q('sld'), {R + 'id': ref})
         log('已更新自定义放映中的幻灯片引用')
+    for relation in list(pres_rels):
+        if relation.get('Id') in old_slide_rels and old_slide_rels[relation.get('Id')] in first_idx_by_src:
+            pres_rels.remove(relation)
 
     # 节（section list）无法可靠重映射：移除
     extLst = pres.find(q('extLst'))
@@ -633,7 +826,7 @@ def _split_archive(z, dst, log):
     # content types
     for ov in list(ctypes):
         pn = ov.get('PartName', '')
-        if re.match(r'/ppt/slides/slide\d+\.xml$', pn):
+        if pn.lstrip('/') in src_slides:
             ctypes.remove(ov)
     for pn, c in ct_add:
         ov = ET.SubElement(ctypes, '{%s}Override' % CT)
@@ -657,18 +850,20 @@ def _split_archive(z, dst, log):
         rl = ET.fromstring(z.read(n))
         changed = False
         for rel in rl:
-            m = re.search(r'slides/slide(\d+)\.xml', rel.get('Target', ''))
-            if m and m.group(1) in first_idx_by_src:
-                rel.set('Target', '../slides/slide%d.xml' % first_idx_by_src[m.group(1)])
+            if not rel.get('Type', '').endswith('/slide') or rel.get('TargetMode') == 'External':
+                continue
+            owner = n.replace('/_rels/', '/').removesuffix('.rels')
+            target = resolve_part(owner, rel.get('Target', ''))
+            if target in first_idx_by_src:
+                new_target = 'ppt/slides/slide%d.xml' % first_idx_by_src[target]
+                rel.set('Target', posixpath.relpath(new_target, posixpath.dirname(owner)))
                 changed = True
         if changed:
             new_slides[n] = serialize(rl)
 
     # 写回
-    skip = set()
+    skip = set(src_slides) | {relationship_part(part) for part in src_slides}
     for n in names:
-        if re.match(r'ppt/slides/slide\d+\.xml$', n) or re.match(r'ppt/slides/_rels/slide\d+\.xml\.rels$', n):
-            skip.add(n)
         if n in new_slides:
             skip.add(n)
     with zipfile.ZipFile(dst, 'w', zipfile.ZIP_DEFLATED) as out:
