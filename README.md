@@ -1,5 +1,7 @@
 # PPTX Animation Split
 
+**简体中文** | [English](README.en.md)
+
 把带动画的 PPTX 拆成静态幻灯片：保留每张源页进入后自动动画结束的状态，以及各次点击结束后的状态，便于课件分发、打印或后续导出 PDF。
 
 本项目是受 [PPspliT](https://github.com/maxonthegit/PPspliT) 启发、借助 AI 开发的 Python 工具，独立于原项目维护。它直接处理 PPTX，不需要启动 PowerPoint，也不是 PowerPoint 插件。

@@ -22,4 +22,6 @@ docs/                  来源基线、限制、验证和发布准备
 tools/                 源码整理工具
 ```
 
+README 的中文首页为 `README.md`，英文版为 `README.en.md`；修改用途、命令、支持范围或验证结论时，两篇需同步更新。语言导航参考 [Ant Design 的 README](https://github.com/ant-design/ant-design/blob/master/README.md)：入口放在标题下，当前语言加粗，另一语言使用相对链接，方便在 GitHub 和下载的源码中切换。
+
 本项目采用 [MIT 许可证](LICENSE)。提交贡献时请确保有权提供相应代码，并保留引用代码所需的来源和许可说明。

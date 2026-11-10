@@ -5,7 +5,7 @@ import zipfile
 
 ROOT = Path(__file__).resolve().parents[1]
 ROOT_FILES = {
-    'README.md', 'ATTRIBUTION.md', 'CONTRIBUTING.md', 'pyproject.toml',
+    'README.md', 'README.en.md', 'ATTRIBUTION.md', 'CONTRIBUTING.md', 'pyproject.toml',
     '.gitignore', 'LICENSE',
 }
 SOURCE_DIRECTORIES = {
