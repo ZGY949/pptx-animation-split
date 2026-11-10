@@ -1,4 +1,5 @@
 import os
+import json
 from pathlib import Path
 import tempfile
 import zipfile
@@ -17,16 +18,37 @@ def input_file(value):
     return path
 
 
-def unsupported_effects(source):
+def read_click_orders(source, path):
+    if path is None:
+        return {}
+    with Path(path).expanduser().open(encoding='utf-8') as stream:
+        supplied = json.load(stream)
+    if not isinstance(supplied, dict):
+        raise ValueError('点击顺序文件应为按源页码组织的 JSON 对象')
+    with zipfile.ZipFile(source) as archive:
+        pages = slide_order(archive)
+    result = {}
+    for number, route in supplied.items():
+        if not number.isdecimal() or not 1 <= int(number) <= len(pages):
+            raise ValueError('点击顺序中的源页码超出范围：%s' % number)
+        if not isinstance(route, list) or any(not isinstance(action, str) for action in route):
+            raise ValueError('每页点击顺序应为 next 或 shape:对象编号构成的数组')
+        if pages[int(number) - 1] in result:
+            raise ValueError('点击顺序中存在重复的源页码：%s' % number)
+        result[pages[int(number) - 1]] = route
+    return result
+
+
+def unsupported_effects(source, click_orders=None):
     notes = []
     with zipfile.ZipFile(source) as archive:
         for name in slide_order(archive):
-            _, warnings = parse_slide_animation(ET.fromstring(archive.read(name)))
+            _, warnings = parse_slide_animation(ET.fromstring(archive.read(name)), (click_orders or {}).get(name))
             notes.extend((name, warning) for warning in warnings)
     return notes
 
 
-def split_file(source, destination, log=print, allow_partial=False):
+def split_file(source, destination, log=print, allow_partial=False, click_orders=None):
     source = input_file(source)
     destination = Path(destination).expanduser()
     if destination.suffix.lower() != '.pptx':
@@ -39,7 +61,7 @@ def split_file(source, destination, log=print, allow_partial=False):
         raise FileExistsError('输出文件已存在，请使用新文件名：%s' % destination)
     if not destination.parent.is_dir():
         raise ValueError('输出目录不存在：%s' % destination.parent)
-    warnings = unsupported_effects(source)
+    warnings = unsupported_effects(source, click_orders)
     if warnings and not allow_partial:
         details = '\n'.join('%s：%s' % (part, warning) for part, warning in warnings[:30])
         raise ValueError('存在未支持动画，未生成输出。仅在需要人工核对的草稿时使用 --allow-partial。\n' + details)
@@ -49,8 +71,8 @@ def split_file(source, destination, log=print, allow_partial=False):
     os.close(descriptor)
     temporary = Path(temporary_name)
     try:
-        per_slide, notes, total = split_pptx(source, temporary, log=log)
-        if verify(source, temporary, log=log):
+        per_slide, notes, total = split_pptx(source, temporary, log=log, click_orders=click_orders)
+        if verify(source, temporary, log=log, click_orders=click_orders):
             raise ValueError('结果未通过结构或动画状态校验，未保存输出文件')
         os.link(temporary, destination)
     finally:

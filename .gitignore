@@ -22,3 +22,4 @@ dist/
 *.zip
 !examples/demo.pptx
 !examples/animation-cases.pptx
+!examples/interaction-repeat-cases.pptx

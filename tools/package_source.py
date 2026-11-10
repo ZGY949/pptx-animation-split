@@ -22,7 +22,7 @@ def source_files():
         if len(relative.parts) == 1 and path.name in ROOT_FILES:
             yield path
         elif relative.parts[0] in SOURCE_DIRECTORIES and (
-            path.suffix in TEXT_SUFFIXES or relative.as_posix() in {'examples/demo.pptx', 'examples/animation-cases.pptx'}
+            path.suffix in TEXT_SUFFIXES or relative.as_posix() in {'examples/demo.pptx', 'examples/animation-cases.pptx', 'examples/interaction-repeat-cases.pptx'}
         ):
             yield path
 

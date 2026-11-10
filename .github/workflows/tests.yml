@@ -38,3 +38,5 @@ jobs:
       - run: pptx-animation-split verify examples/demo.pptx demo-split.pptx
       - run: pptx-animation-split split examples/animation-cases.pptx animation-cases-split.pptx
       - run: pptx-animation-split verify examples/animation-cases.pptx animation-cases-split.pptx
+      - run: pptx-animation-split split examples/interaction-repeat-cases.pptx interaction-repeat-split.pptx
+      - run: pptx-animation-split verify examples/interaction-repeat-cases.pptx interaction-repeat-split.pptx

@@ -4,7 +4,7 @@
 
 本项目是受 [PPspliT](https://github.com/maxonthegit/PPspliT) 启发、借助 AI 开发的 Python 工具，独立于原项目维护。它直接处理 PPTX，不需要启动 PowerPoint，也不是 PowerPoint 插件。
 
-当前版本：`0.1.0a2`，发布准备版。只支持部分动画。采用 [MIT 许可证](LICENSE)，保留[来源致谢](ATTRIBUTION.md)；发布状态见[发布清单](docs/RELEASE_CHECKLIST.md)。
+当前版本：`0.1.0a3`，发布准备版。只支持部分动画。采用 [MIT 许可证](LICENSE)，保留[来源致谢](ATTRIBUTION.md)；发布状态见[发布清单](docs/RELEASE_CHECKLIST.md)。
 
 ## 快速使用
 
@@ -31,6 +31,21 @@ python3 -m pptx_animation_split split "/路径/源课件.pptx" "/路径/源课�
 拆分完请用实际使用的演示软件打开结果，核对公式、答案出现顺序、段落位置和图片裁剪。程序校验不能代替视觉检查。
 
 遇到已检测出的未支持动画时，默认停止并不生成结果。只有为了排查问题、愿意逐页人工核对草稿时，才使用 `split 源文件.pptx 新结果.pptx --allow-partial`；此时返回退出码 `3`，结果可能不完整。
+
+## 对象触发与重复播放
+
+对象点击触发支持实验性自动展开：默认先完成普通点击，再按文件中触发序列的顺序（通常对应动画窗格顺序）依次点击各触发对象。一个对象控制的多步动画会依次展开；日志会列出 `shape:编号` 和对象名称。输出保存这一条确定路线，不能代表任意按钮顺序都得到相同画面。
+
+需要调整路线时，可参照 `examples/click-order.json`：键是源页码，`next` 表示普通点击，`shape:4` 表示点击源页对象 4。没有列出的源页继续自动展开。
+
+```sh
+python3 -m pptx_animation_split split examples/interaction-repeat-cases.pptx trigger-split.pptx --click-order examples/click-order.json
+python3 -m pptx_animation_split verify examples/interaction-repeat-cases.pptx trigger-split.pptx --click-order examples/click-order.json
+```
+
+有限次重复按完整周期计算持续时间和显隐先后，每个点击仍输出一个状态，不按重复次数增加页面。无限循环没有唯一终态，默认保留一轮完成后的代表状态，并在日志说明；它不能还原在任意时刻点击停止时的画面。停在半周期、重复累加等未支持情形仍会停止生成。
+
+本机 macOS WPS 已实际播放有限重复和无限循环样例，但对象触发输入在该环境未成功播放，不能把这部分标为原软件对照通过；文字放大的少量像素差异仍未消除。详情见[验证记录](docs/VALIDATION.md)。
 
 ## 另外两个命令
 
@@ -59,6 +74,7 @@ python3 -m pptx_animation_split peek "/路径/源课件_静态版.pptx" 1 3-5
 
 - 文字、图片、形状和分组的进入、退出，以及部分按段落显示或隐藏的动画。
 - 点击、同时、之后和延时组合；进入页后自动执行的效果合并到首个静态状态。
+- 实验性对象触发展开、可选自定义点击顺序，以及有限整周期重复和无限循环代表状态。
 - 公式的兼容分支、旧式嵌入公式预览和段落占位；保留原生结构，不把公式改写为普通文字。
 - 部分文字变色、按角度旋转、图片和形状缩放；本地字号明确的文字支持等比缩放。
 - 满足特定条件的顶层对象直线、多段线、三次贝塞尔曲线和封闭路径终点，包括连续路径。
@@ -88,6 +104,6 @@ pptx-animation-split split "/路径/源课件.pptx" "/路径/源课件_静态版
 python3 -m unittest discover -s tests -v
 ```
 
-现有 58 项测试包含 27 种三对象触发组合，以及文字、图片、形状、分组、延时显隐、曲线、缩放旋转、导航和文件保护。另有在 WPS 中制作并实际播放对照的[复杂动画样例](examples/README.md)，5 页拆为 13 个状态。这些检查不代表所有预设效果和任意组合均已验收。查看[验证记录](docs/VALIDATION.md)、[贡献说明](CONTRIBUTING.md)和[来源致谢](ATTRIBUTION.md)。
+现有 79 项测试包含 27 种三对象触发组合，以及文字、图片、形状、分组、延时显隐、曲线、缩放旋转、导航和文件保护。另有在 WPS 中制作并实际播放对照的[复杂动画样例](examples/README.md)，5 页拆为 13 个状态；新增触发与重复样例为 3 页拆为 8 个状态，实际验收边界另行记录。这些检查不代表所有预设效果和任意组合均已验收。查看[验证记录](docs/VALIDATION.md)、[贡献说明](CONTRIBUTING.md)和[来源致谢](ATTRIBUTION.md)。
 
 感谢 Massimo Rimondini 的 PPspliT。作者关于独立实现和署名要求的说明见[原项目讨论](https://github.com/maxonthegit/PPspliT/issues/29#issuecomment-6727916615)。本项目不代表原作者提供支持或背书。

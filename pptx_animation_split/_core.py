@@ -10,6 +10,8 @@ import xml.etree.ElementTree as ET
 from xml.sax.saxutils import quoteattr
 
 from ._motion import motion_endpoint
+from ._interaction import expand_interactions
+from ._repetition import repetition
 
 CT = 'http://schemas.openxmlformats.org/package/2006/content-types'
 PR = 'http://schemas.openxmlformats.org/package/2006/relationships'
@@ -28,6 +30,7 @@ class AnimationGroups(list):
     def __init__(self):
         super().__init__()
         self.initial = []
+        self.info = []
 
 
 def all_animation_groups(groups):
@@ -35,7 +38,13 @@ def all_animation_groups(groups):
 
 
 def active_animation_groups(groups, upto):
-    return [getattr(groups, 'initial', [])] + list(groups[:max(0, upto + 1)])
+    active = [getattr(groups, 'initial', [])] + list(groups[:max(0, upto + 1)])
+    latest = {event['replay_key']: (group_index, event_index)
+              for group_index, effects in enumerate(active) for event_index, event in enumerate(effects)
+              if event.get('replay_key') is not None}
+    return [[event for event_index, event in enumerate(effects)
+             if event.get('replay_key') is None or latest[event['replay_key']] == (group_index, event_index)]
+            for group_index, effects in enumerate(active)]
 
 
 def resolve_part(owner, target):
@@ -172,7 +181,11 @@ def has_local_font_sizes(shape):
     return True
 
 
-def parse_slide_animation(root):
+def parse_slide_animation(root, click_order=None):
+    return expand_interactions(root, click_order, _parse_linear_animation, AnimationGroups, animation_visibility)
+
+
+def _parse_linear_animation(root):
     """返回 (groups, notes)
     groups: list of list of dict(effect)"""
     timing = root.find(q('timing'))
@@ -181,6 +194,8 @@ def parse_slide_animation(root):
             return [], ['兼容分支中的动画时间树尚未支持']
         return [], []
     notes = []
+    if len(list(root.iter(q('timing')))) != 1:
+        notes.append('同一页的多个动画时间树尚未支持')
     if any(node.get('nodeType') == 'interactiveSeq' for node in timing.iter(q('cTn'))):
         notes.append('对象触发的交互动画不能可靠展开为单一点击序列')
     main = None
@@ -204,20 +219,27 @@ def parse_slide_animation(root):
         notes.append('存在多个主动画序列，尚未支持')
     if any(main not in sequence.iter() for sequence in timing.iter(q('seq'))):
         notes.append('主序列之外或嵌套的顺序时间节点尚未支持')
-    if any(True for _ in timing.iter(q('endCondLst'))):
-        notes.append('按条件提前结束的动画尚未支持')
+    root_id = next((node.get('id') for node in timing.iter(q('cTn')) if node.get('nodeType') == 'tmRoot'), None)
+    for node in timing.iter(q('cTn')):
+        for condition in node.findall(q('endCondLst') + '/' + q('cond')):
+            next_click = condition.get('evt') == 'onNext' and condition.find(q('tgtEl') + '/' + q('sldTgt')) is not None
+            reference = condition.find(q('tn'))
+            slide_end = condition.get('evt') == 'onEnd' and reference is not None and reference.get('val') == root_id
+            looping = node.get('repeatCount') == 'indefinite' or node.get('repeatDur') == 'indefinite'
+            if not looping or not (next_click or slide_end):
+                notes.append('按条件提前结束的动画尚未支持')
     identifiers = [node.get('id') for node in timing.iter(q('cTn')) if node.get('id')]
     if len(identifiers) != len(set(identifiers)):
         notes.append('动画时间节点 ID 重复，事件依赖不明确')
     for node in timing.iter(q('cTn')):
-        if node.get('repeatCount') not in (None, '1000') or node.get('repeatDur') is not None:
-            notes.append('动画含重复播放条件，终态尚未验证')
         if node.get('spd') not in (None, '100000') or node.get('tmFilter') or node.get('evtFilter'):
             notes.append('自定义时间速度或时间筛选尚未支持')
     time_nodes = {node.get('id'): node for node in timing.iter(q('cTn')) if node.get('id')}
     starts = {}
     ends = {}
     pending = set()
+    simple_durations = {}
+    repeat_values = {}
 
     def end_time(node):
         if id(node) in ends:
@@ -229,13 +251,21 @@ def parse_slide_animation(root):
         pending.add(key)
         duration = node.get('dur')
         if duration is not None and duration.isdecimal():
-            result = start_time(node) + int(duration)
+            simple = int(duration)
         else:
             if duration not in (None, '0'):
                 notes.append('事件依赖的动画结束时间不确定')
             child_times = node.find(q('childTnLst'))
             child_nodes = [child for child in child_times.iter(q('cTn'))] if child_times is not None else []
-            result = max([start_time(node)] + [end_time(child) for child in child_nodes])
+            simple = max([start_time(node)] + [end_time(child) for child in child_nodes]) - start_time(node)
+        simple_durations[id(node)] = simple
+        try:
+            active, cycles, looping = repetition(node, simple)
+        except ValueError as error:
+            notes.append(str(error))
+            active, cycles, looping = simple, 1, False
+        repeat_values[id(node)] = (active, cycles, looping)
+        result = start_time(node) + active
         pending.remove(key)
         ends[id(node)] = result
         return result
@@ -266,6 +296,8 @@ def parse_slide_animation(root):
             referenced = time_nodes.get(reference.get('val')) if reference is not None else None
             if event in ('onBegin', 'onEnd') and referenced is not None:
                 origin = start_time(referenced) if event == 'onBegin' else end_time(referenced)
+                if event == 'onEnd' and repeat_values.get(id(referenced), (0, 1, False))[2]:
+                    notes.append('依赖无限循环的结束事件没有确定时间，尚未支持')
             elif event is None:
                 origin = base
             else:
@@ -348,16 +380,37 @@ def parse_slide_animation(root):
                                 break
                             parent = shape_parents.get(parent)
             begin = start_time(ec)
-            finish = begin
-            for timed in ec.iter(q('cTn')):
-                duration = timed.get('dur', '0')
-                if duration.isdecimal():
-                    finish = max(finish, start_time(timed) + int(duration))
-                elif duration != '0':
-                    notes.append('动画效果具有不确定持续时间：%s' % duration)
+            finish = end_time(ec)
+            if cls == 'entr':
+                for timed in ec.iter(q('cTn')):
+                    _, cycles, _ = repeat_values.get(id(timed), (0, 1, False))
+                    if cycles > 1:
+                        period = simple_durations[id(timed)] * (2 if timed.get('autoRev') in ('1', 'true') else 1)
+                        begin = max(begin, start_time(timed) + period * (cycles - 1))
+            offset = 0
+            ancestor = parents.get(ec)
+            repeated = list(ec.iter(q('cTn')))
+            while ancestor is not None:
+                if ancestor.tag == q('cTn') and (ancestor.get('repeatCount') is not None or ancestor.get('repeatDur') is not None):
+                    end_time(ancestor)
+                    _, cycles, looping = repeat_values[id(ancestor)]
+                    offset += simple_durations[id(ancestor)] * (cycles - 1)
+                    repeated.append(ancestor)
+                    if ancestor.get('autoRev') in ('1', 'true'):
+                        notes.append('动画容器整体反向播放尚未支持')
+                ancestor = parents.get(ancestor)
+            looping = any(repeat_values.get(id(node), (0, 1, False))[2] for node in repeated)
+            if looping:
+                groups.info.append('无限循环动画保留一轮完成后的代表状态；循环播放过程不生成额外页面')
+                if any(repeat_values.get(id(node), (0, 1, False))[2] and node.get('fill') == 'remove'
+                       and node.get('autoRev') not in ('1', 'true') for node in repeated):
+                    notes.append('无限循环结束后复原的效果需要明确停止时机，尚未支持')
+            if any(node.get('repeatCount') not in (None, '1000') or node.get('repeatDur') is not None for node in repeated):
+                if any(node.get('accumulate') == 'always' for node in ec.iter(q('cBhvr'))):
+                    notes.append('逐次累加的重复动画尚未支持')
             effs.append(dict(cls=cls, preset=ec.get('presetID'), sub=ec.get('presetSubtype'),
                              node=ec.get('nodeType'), spid=spid, prg=prg, filter=filt,
-                             changes=changes, start=begin, end=finish, order=len(covered)))
+                             changes=changes, start=begin + offset, end=finish + offset, order=len(covered), time_id=ec.get('id'), looping=looping))
             if cls not in ('entr', 'exit') and not (cls in ('emph', 'path') and changes is not None):
                 notes.append('unsupported class %s (preset %s)' % (cls, ec.get('presetID')))
         if effs:
@@ -382,7 +435,10 @@ def parse_slide_animation(root):
                 if left['spid'] != right['spid']:
                     continue
                 same_properties = {change['kind'] for change in left.get('changes') or []} & {change['kind'] for change in right.get('changes') or []}
-                if same_properties and max(left['start'], right['start']) < min(left['end'], right['end']):
+                loop_visibility = (left.get('looping') or right.get('looping')) and left['cls'] in ('entr', 'exit') and right['cls'] in ('entr', 'exit')
+                left_end = float('inf') if left.get('looping') else left['end']
+                right_end = float('inf') if right.get('looping') else right['end']
+                if (same_properties or loop_visibility) and max(left['start'], right['start']) < min(left_end, right_end):
                     notes.append('同一对象的同一属性有重叠动画，叠加规则尚未验证：%s' % left['spid'])
         effects.sort(key=lambda event: event['start'] if event['cls'] == 'entr' else event['end'])
     return groups, list(dict.fromkeys(notes))
@@ -430,7 +486,7 @@ def slide_order(z):
 def animation_visibility(groups, upto):
     whole = {}
     paragraphs = {}
-    declared = sorted((effect for effects in all_animation_groups(groups) for effect in effects),
+    declared = sorted(getattr(groups, 'declared', [effect for effects in all_animation_groups(groups) for effect in effects]),
                       key=lambda effect: effect.get('order', 0))
     for effect in declared:
         if effect['cls'] not in ('entr', 'exit') or not effect['spid']:
@@ -659,12 +715,13 @@ def filter_legacy_drawings(source, source_part, source_root, rendered_root, slid
     return copies
 
 
-def split_pptx(src, dst, log=print):
+def split_pptx(src, dst, log=print, click_orders=None):
     with zipfile.ZipFile(src) as archive:
-        return _split_archive(archive, dst, log)
+        return _split_archive(archive, dst, log, click_orders or {})
 
 
-def _split_archive(z, dst, log):
+def _split_archive(z, dst, log, click_orders=None):
+    click_orders = click_orders or {}
     register_all(z)
     names = z.namelist()
     src_slides = slide_order(z)
@@ -690,7 +747,9 @@ def _split_archive(z, dst, log):
     all_notes = []
     for s in src_slides:
         root = ET.fromstring(z.read(s))
-        groups, notes = parse_slide_animation(root)
+        groups, notes = parse_slide_animation(root, click_orders.get(s))
+        for information in dict.fromkeys(getattr(groups, 'info', [])):
+            log('%s：%s' % (s, information))
         cSld = root.find(q('cSld'))
         tree = cSld.find(q('spTree')) if cSld is not None else None
         shapes = list(shape_elements(tree)) if tree is not None else []
@@ -740,7 +799,7 @@ def _split_archive(z, dst, log):
     for idx, (s, k) in enumerate(plan, start=1):
         new_name = 'ppt/slides/slide%d.xml' % idx
         source_root = ET.fromstring(z.read(s))
-        groups, _ = parse_slide_animation(source_root)
+        groups, _ = parse_slide_animation(source_root, click_orders.get(s))
         root = clone_and_render(z.read(s), groups, k, slide_size)
         new_slides[new_name] = serialize(root, collect_ns(z.read(s)))
 

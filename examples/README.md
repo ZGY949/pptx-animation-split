@@ -37,3 +37,21 @@ python3 -m pptx_animation_split split examples/animation-cases.pptx animation-ca
 应得到 13 页。第 4 页的前两条路径回到起点，保留对应点击产生的相同终态页。第 5 页无需点击，自动效果完成后为一个静态状态。
 
 已在上述 WPS 环境逐步播放源文件，并与全部 13 页输出实际对照。显隐、路径终点、图片裁剪符合预期；文字缩放及形状边缘存在少量像素差异，详见[验证记录](../docs/VALIDATION.md)。不是所有 WPS 效果的完整目录。
+
+## 对象触发与重复样例
+
+`interaction-repeat-cases.pptx` 共 3 页，默认拆成 8 页：
+
+| 源页 | 内容与来源 | 输出状态数 |
+| --- | --- | --- |
+| 1 | WPS 界面设置形状放大重复 3 次，保留文字和图片的同时/之后组合 | 2 |
+| 2 | WPS 界面设置形状循环到下一次点击；文字同时放大，图片在下一次普通点击放大 | 3 |
+| 3 | 用标准 Open XML 时间树构造：普通点击放大形状与图片，点击星形触发文字放大 | 3 |
+
+```sh
+python3 -m pptx_animation_split split examples/interaction-repeat-cases.pptx interaction-repeat-split.pptx
+```
+
+第 2 页循环阶段的输出是代表状态，不是对任意停止时机的预测。第 3 页的源对象触发未在本机 Mac WPS 中成功播放，不能将其列为原软件实际放映验收通过；这页用于可复现的语义、结构和静态结果检查。前两页的效果在 WPS 界面设置并实际播放过。
+
+`click-order.json` 示范把源第 3 页改为“先点击星形，再普通点击”，其他源页沿用默认顺序。拆分和校验均需传入 `--click-order examples/click-order.json`。不要覆盖样例源文件。

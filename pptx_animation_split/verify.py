@@ -75,7 +75,10 @@ def check_state(source_root, output_root, groups, step, slide_size=None):
     output = shape_index(output_root)
     whole_events = {}
     paragraph_events = {}
-    for group_index, effects in enumerate(all_animation_groups(groups), -1):
+    scheduled = list(enumerate(all_animation_groups(groups), -1))
+    if hasattr(groups, 'declared'):
+        scheduled.insert(0, (float('inf'), groups.declared))
+    for group_index, effects in scheduled:
         for effect in effects:
             if effect['cls'] not in ('entr', 'exit') or not effect['spid']:
                 continue
@@ -222,7 +225,7 @@ def check_navigation(source, output, pages_by_source):
     return errors
 
 
-def verify(src, dst, log=print):
+def verify(src, dst, log=print, click_orders=None):
     errors = []
     warnings = []
     notices = []
@@ -278,7 +281,9 @@ def verify(src, dst, log=print):
         pages_by_source = {}
         for source_number, name in enumerate(source_slides, 1):
             original = ET.fromstring(source.read(name))
-            groups, notes = parse_slide_animation(original)
+            groups, notes = parse_slide_animation(original, (click_orders or {}).get(name))
+            for information in dict.fromkeys(getattr(groups, 'info', [])):
+                log('%s：%s' % (name, information))
             warnings.extend('%s：%s' % (name, note) for note in notes)
             previous = None
             start = expected_count

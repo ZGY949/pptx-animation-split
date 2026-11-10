@@ -103,13 +103,13 @@ def slide(objects, effects=()):
             behavior = ET.SubElement(behaviors, P + 'animEffect', transition='in' if event['cls'] == 'entr' else 'out', filter=event.get('filter', 'fade'))
         else:
             behavior = ET.SubElement(behaviors, P + event.get('behavior', 'animRot'), event.get('attributes', {'by': '5400000'}))
-            if 'scale' in event:
-                ET.SubElement(behavior, P + 'by', x=str(event['scale'][0]), y=str(event['scale'][1]))
         common = ET.SubElement(behavior, P + 'cBhvr')
         time(common, dur=event['duration'], fill='hold')
         target = ET.SubElement(ET.SubElement(common, P + 'tgtEl'), P + 'spTgt', spid=event['sid'])
         if 'paragraphs' in event:
             ET.SubElement(ET.SubElement(target, P + 'txEl'), P + 'pRg', st=str(event['paragraphs'][0]), end=str(event['paragraphs'][1]))
+        if 'scale' in event:
+            ET.SubElement(behavior, P + 'by', x=str(event['scale'][0]), y=str(event['scale'][1]))
         elapsed = max(elapsed, start + event['duration'])
     for kind, event in (('prevCondLst', 'onPrev'), ('nextCondLst', 'onNext')):
         condition = ET.SubElement(ET.SubElement(sequence, P + kind), P + 'cond', evt=event, delay='0')
@@ -179,3 +179,45 @@ def rewrite(source, output, part, change):
                 change(root)
                 data = ET.tostring(root)
             after.writestr(entry, data)
+
+
+def add_interactive(root, trigger, events, restart='whenNotActive'):
+    model = slide([], events)
+    model_timing = model.find(P + 'timing')
+    sequence = copy.deepcopy(model_timing.find('.//' + P + 'seq'))
+    timing = root.find(P + 'timing')
+    if timing is None:
+        timing = copy.deepcopy(model_timing)
+        time_root = next(n for n in timing.iter(P + 'cTn') if n.get('nodeType') == 'tmRoot')
+        time_root.find(P + 'childTnLst').clear()
+        root.append(timing)
+    else:
+        time_root = next(n for n in timing.iter(P + 'cTn') if n.get('nodeType') == 'tmRoot')
+    last_id = max(int(n.get('id')) for n in timing.iter(P + 'cTn'))
+    mapping = {n.get('id'): str(last_id + index + 1) for index, n in enumerate(sequence.iter(P + 'cTn'))}
+    for node in sequence.iter(P + 'cTn'):
+        node.set('id', mapping[node.get('id')])
+    for reference in sequence.iter(P + 'tn'):
+        reference.set('val', mapping.get(reference.get('val'), reference.get('val')))
+    channel = sequence.find(P + 'cTn')
+    channel.set('nodeType', 'interactiveSeq')
+    channel.set('restart', restart)
+    channel.set('evtFilter', 'cancelBubble')
+    channel.attrib.pop('dur', None)
+    start_conditions = ET.Element(P + 'stCondLst')
+    channel.insert(0, start_conditions)
+    condition = ET.SubElement(start_conditions, P + 'cond', evt='onClick', delay='0')
+    ET.SubElement(ET.SubElement(condition, P + 'tgtEl'), P + 'spTgt', spid=str(trigger))
+    synchronization = ET.Element(P + 'endSync', evt='end', delay='0')
+    ET.SubElement(synchronization, P + 'rtn', val='all')
+    channel.insert(1, synchronization)
+    first = channel.find(P + 'childTnLst/' + P + 'par/' + P + 'cTn/' + P + 'stCondLst/' + P + 'cond')
+    if first is not None:
+        first.set('delay', '0')
+    for name in ('prevCondLst', 'nextCondLst'):
+        for listing in list(sequence.findall(P + name)):
+            sequence.remove(listing)
+    condition = ET.SubElement(ET.SubElement(sequence, P + 'nextCondLst'), P + 'cond', evt='onClick', delay='0')
+    ET.SubElement(ET.SubElement(condition, P + 'tgtEl'), P + 'spTgt', spid=str(trigger))
+    time_root.find(P + 'childTnLst').append(sequence)
+    return channel

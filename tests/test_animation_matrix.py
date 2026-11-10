@@ -117,7 +117,7 @@ class AnimationMatrixTests(unittest.TestCase):
                 self.assertTrue(all(list(page.iter(P + 'transition')) == [] for page in output))
 
     def test_interactive_or_unidentified_effects_refuse_to_generate_output(self):
-        for mode in ('interactive', 'missing_preset', 'repeated', 'unknown_class'):
+        for mode in ('interactive', 'missing_preset', 'invalid_repeat', 'unknown_class'):
             with self.subTest(mode=mode):
                 root = slide([(2, 'text')], [effect(2)])
                 if mode == 'interactive':
@@ -125,8 +125,8 @@ class AnimationMatrixTests(unittest.TestCase):
                 node = next(n for n in root.iter(P + 'cTn') if n.get('presetID'))
                 if mode == 'missing_preset':
                     del node.attrib['presetID']
-                elif mode == 'repeated':
-                    node.set('repeatCount', 'indefinite')
+                elif mode == 'invalid_repeat':
+                    node.set('repeatCount', 'invalid')
                 elif mode == 'unknown_class':
                     node.set('presetClass', 'vendor-extension')
                 source = self.root / (mode + '.pptx')
@@ -167,14 +167,14 @@ class AnimationMatrixTests(unittest.TestCase):
         self.assertEqual(['2' in object_ids(page) for page in output], [True, True])
 
     def test_unhandled_time_and_target_structures_refuse_output(self):
-        modes = ('wrapper_repeat', 'end_condition', 'speed', 'nested_sequence', 'duplicate_id', 'cyclic_dependency', 'character_range', 'sub_shape', 'missing_target', 'paragraph_range', 'wrapped_timing')
+        modes = ('partial_wrapper_repeat', 'end_condition', 'speed', 'nested_sequence', 'duplicate_id', 'cyclic_dependency', 'character_range', 'sub_shape', 'missing_target', 'paragraph_range', 'wrapped_timing')
         for mode in modes:
             with self.subTest(mode=mode):
                 root = slide([(2, 'text')], [effect(2)])
                 time_nodes = list(root.iter(P + 'cTn'))
                 target = root.find('.//' + P + 'spTgt')
-                if mode == 'wrapper_repeat':
-                    time_nodes[2].set('repeatDur', '5000')
+                if mode == 'partial_wrapper_repeat':
+                    time_nodes[2].set('repeatDur', '5100')
                 elif mode == 'end_condition':
                     ET.SubElement(ET.SubElement(time_nodes[2], P + 'endCondLst'), P + 'cond', delay='200')
                 elif mode == 'speed':
