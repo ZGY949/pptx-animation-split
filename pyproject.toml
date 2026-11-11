@@ -11,7 +11,7 @@ requires-python = ">=3.10"
 dependencies = []
 authors = [{name = "ZGY949"}]
 license = "MIT"
-license-files = ["LICENSE", "ATTRIBUTION.md"]
+license-files = ["LICENSE", "ATTRIBUTION.md", "ATTRIBUTION.en.md"]
 classifiers = [
     "Development Status :: 3 - Alpha",
     "Programming Language :: Python :: 3",

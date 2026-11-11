@@ -6,7 +6,7 @@ Split an animated PPTX into static slides. Each source slide produces a snapshot
 
 This Python tool was developed with AI assistance and inspired by [PPspliT](https://github.com/maxonthegit/PPspliT). It is maintained independently of that project. It edits PPTX files directly, without starting PowerPoint, and is not a PowerPoint add-in.
 
-Current version: `0.1.0a3`, an alpha version being prepared for release. Only some animations are supported. The project uses the [MIT License](LICENSE) and includes [attribution](ATTRIBUTION.md). See the [release checklist](docs/RELEASE_CHECKLIST.md) for its publication status. Supporting documentation linked from this README is currently in Chinese unless otherwise indicated.
+Current version: `0.1.0a3`, an alpha version being prepared for release. Only some animations are supported. The project uses the [MIT License](LICENSE) and includes [attribution](ATTRIBUTION.en.md). See the [release checklist](docs/RELEASE_CHECKLIST.en.md) for its publication status.
 
 ## Quick start
 
@@ -47,7 +47,7 @@ python3 -m pptx_animation_split verify examples/interaction-repeat-cases.pptx tr
 
 For finite repetitions, complete cycles determine duration and the order of visibility changes. Each click still produces one state; repeating an effect does not add a slide for every repetition. An infinite loop has no unique final state, so the tool keeps a representative state after one completed cycle and explains this in the log. It cannot reproduce the appearance of a loop stopped at an arbitrary moment. Unsupported cases, such as stopping partway through a cycle or accumulating repeated effects, still prevent output generation.
 
-Finite-repeat and infinite-loop examples have been played in the local macOS WPS environment. The object-trigger input could not be played successfully in that environment, so comparison against the original presentation application remains incomplete for object triggers. Small pixel differences in enlarged text also remain unresolved. See the [validation record](docs/VALIDATION.md).
+Finite-repeat and infinite-loop examples have been played in the local macOS WPS environment. The object-trigger input could not be played successfully in that environment, so comparison against the original presentation application remains incomplete for object triggers. Small pixel differences in enlarged text also remain unresolved. See the [validation record](docs/VALIDATION.en.md).
 
 ## Two other commands
 
@@ -82,7 +82,7 @@ Text inspection also reads text in transparent placeholder paragraphs. It cannot
 - End positions of straight, multi-segment, cubic Bézier, and closed motion paths on top-level objects under specific conditions, including successive paths.
 - Internal slide links remapped to the first static state of the target source slide. Custom shows expand in their original order. Slide transitions and automatic slide advance are removed.
 
-See [supported conditions and known limitations](docs/LIMITATIONS.md) for details. Legacy `.ppt`, `.pptm`, and encrypted files are not supported. The tool does not export PDF directly or preserve animation playback, and it does not guarantee faithful reproduction of every PowerPoint effect.
+See [supported conditions and known limitations](docs/LIMITATIONS.en.md) for details. Legacy `.ppt`, `.pptm`, and encrypted files are not supported. The tool does not export PDF directly or preserve animation playback, and it does not guarantee faithful reproduction of every PowerPoint effect.
 
 Files are processed locally; the tool does not actively upload presentations. The output retains media, embedded objects, and some notes from the source. Hidden paragraphs may also retain their original text, so the output is not a tool for redaction or permanent content removal.
 
@@ -106,6 +106,6 @@ Run from the project root:
 python3 -m unittest discover -s tests -v
 ```
 
-The current 79 tests cover 27 combinations of triggers for three objects, as well as text, images, shapes, groups, delayed visibility changes, curves, scaling, rotation, navigation, and file protection. The repository also includes [complex animation examples](examples/README.md) authored in WPS and compared against playback: 5 source slides expand to 13 states. The additional trigger and repetition examples expand from 3 slides to 8 states, with the limits of their actual validation recorded separately. These checks do not establish support for every preset effect or arbitrary combination. See the [validation record](docs/VALIDATION.md), [contribution guide](CONTRIBUTING.md), and [attribution](ATTRIBUTION.md).
+The current 79 tests cover 27 combinations of triggers for three objects, as well as text, images, shapes, groups, delayed visibility changes, curves, scaling, rotation, navigation, and file protection. The repository also includes [complex animation examples](examples/README.en.md) authored in WPS and compared against playback: 5 source slides expand to 13 states. The additional trigger and repetition examples expand from 3 slides to 8 states, with the limits of their actual validation recorded separately. These checks do not establish support for every preset effect or arbitrary combination. See the [validation record](docs/VALIDATION.en.md), [contribution guide](CONTRIBUTING.en.md), and [attribution](ATTRIBUTION.en.md).
 
 Thanks to Massimo Rimondini for PPspliT. The author's clarification on independent implementations and attribution is available in the [original project discussion](https://github.com/maxonthegit/PPspliT/issues/29#issuecomment-6727916615). This project does not imply support or endorsement by the original author.

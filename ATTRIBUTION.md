@@ -1,5 +1,7 @@
 # 来源与致谢
 
+**简体中文** | [English](ATTRIBUTION.en.md)
+
 本项目受 [PPspliT](https://github.com/maxonthegit/PPspliT) 启发。原项目作者为 **Massimo Rimondini**，其 PowerPoint 插件使用 VBA，将动画步骤拆成静态幻灯片。
 
 本项目从本地 `pptx-animation-split` 技能中的 Python 脚本整理而来，包含借助 AI 完成的实现和修复。原本地脚本使用了 `PPspliT (Python re-implementation, entry-effect subset)` 的标记；现保留来源关系，采用独立项目名称，避免与原 VBA 插件混淆。未将原插件程序、安装包或 VBA 源码复制进本项目，也未对原插件作出兼容性或修复承诺。
