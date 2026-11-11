@@ -6,11 +6,11 @@ Split an animated PPTX into static slides. Each source slide produces a snapshot
 
 This Python tool was developed with AI assistance and inspired by [PPspliT](https://github.com/maxonthegit/PPspliT). It is maintained independently of that project. It edits PPTX files directly, without starting PowerPoint, and is not a PowerPoint add-in.
 
-Current version: `0.1.0a3`, an alpha version being prepared for release. Only some animations are supported. The project uses the [MIT License](LICENSE) and includes [attribution](ATTRIBUTION.en.md). See the [release checklist](docs/RELEASE_CHECKLIST.en.md) for its publication status.
+Current version: `0.1.0a3`, an alpha preview version. Only some animations are supported. The project uses the [MIT License](LICENSE) and includes [attribution](ATTRIBUTION.en.md). See the [release checklist](docs/RELEASE_CHECKLIST.en.md) for the release preparation record.
 
 ## Quick start
 
-Requires Python 3.10 or later. The tool uses only the Python standard library, with no third-party runtime dependencies. Local validation has used macOS and Python 3.12, with visual checks of demonstration slides and selected steps in a real course deck in WPS Office 12.1.29182. Other operating systems and presentation applications have not yet been validated.
+Requires Python 3.10 or later. The tool uses only the Python standard library, with no third-party runtime dependencies. Command-line help and log messages are currently in Chinese. Local validation has used macOS and Python 3.12, with visual checks of demonstration slides and selected steps in a real course deck in WPS Office 12.1.29182. Other operating systems and presentation applications have not yet been validated.
 
 Download and extract the project ZIP, open a terminal in the project directory, and run:
 

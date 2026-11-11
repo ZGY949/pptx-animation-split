@@ -2,7 +2,7 @@
 
 [简体中文](RELEASE_CHECKLIST.md) | **English**
 
-Repository: [ZGY949/pptx-animation-split](https://github.com/ZGY949/pptx-animation-split), currently private. The maintainer has authorized uploading source code. No GitHub Release or PyPI package has been published. Repository files and commit history are the source of truth for the code's current state.
+Repository: [ZGY949/pptx-animation-split](https://github.com/ZGY949/pptx-animation-split). This checklist records the state at the pre-publication check on November 11, 2026: the repository was private, the maintainer had authorized source uploads, and no GitHub Release or PyPI package had been published. For subsequent code and publication status, refer to repository files, commit history, and the Releases page.
 
 ## Prepared
 
@@ -13,7 +13,9 @@ Repository: [ZGY949/pptx-animation-split](https://github.com/ZGY949/pptx-animati
 - [x] Generic demonstration deck, complex animation examples authored in WPS, trigger/repetition examples, a click-order example, Chinese and English README and supporting documents, support conditions, known limitations, and an issue-report template.
 - [x] Credit to the original author, a link to the original project, and a permanent link to the author's licensing clarification.
 - [x] Ignore rules excluding real course decks, office documents, environment files, caches, and local artifacts.
-- [x] A manually triggered GitHub test workflow. Configuration is prepared; it has not been run remotely.
+- [x] Chinese and English issue-report templates, with repository and issue-report URLs in installation metadata.
+- [x] A manually triggered GitHub test workflow with official checkout/setup-python v7 commits pinned, custom-route and text-inspection steps, and a 10-minute timeout per job. It has not been run remotely.
+- [x] Re-ran 79 local tests, isolated offline installation, and default/custom-route checks for the three examples on November 11, 2026. Reviewed history and examples for common sensitive patterns, with no matches. See the validation record for details and scope.
 
 See [VALIDATION.en.md](VALIDATION.en.md) for actual results. Object triggers remain experimental, and comparison of trigger input against playback in Mac WPS is incomplete. Infinite loops produce a representative state, and small pixel differences in text scaling remain. These results do not establish that every application and platform has passed validation.
 
@@ -28,7 +30,7 @@ See [VALIDATION.en.md](VALIDATION.en.md) for actual results. Object triggers rem
 
 ## Follow-up before public release
 
-1. Review the private repository's files, MIT License, attribution, and README rendering.
+1. Review the private repository's files, MIT License, attribution, and README rendering. At publication, confirm the tag targets the audited commit and check the downloads and their SHA-256 checksums.
 2. If further cross-platform validation is needed, manually run Tests from the Actions page after confirming the account's available allowance and costs. The workflow does not run automatically on push and does not publish automatically.
 3. Before making the repository public or publishing the `v0.1.0a3` preview release, obtain the maintainer's confirmation and explain the known limitations. Continue marking checks that have not been performed as incomplete. The current upload authorization covers only the private repository.
 4. After the repository is public, obtain the user's instruction before sharing a link in the [original discussion](https://github.com/maxonthegit/PPspliT/issues/29).

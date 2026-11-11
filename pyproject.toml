@@ -21,6 +21,10 @@ classifiers = [
 [project.scripts]
 pptx-animation-split = "pptx_animation_split.cli:main"
 
+[project.urls]
+Repository = "https://github.com/ZGY949/pptx-animation-split"
+Issues = "https://github.com/ZGY949/pptx-animation-split/issues"
+
 [tool.setuptools.packages.find]
 include = ["pptx_animation_split*"]
 

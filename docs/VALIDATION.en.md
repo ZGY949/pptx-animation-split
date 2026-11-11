@@ -2,7 +2,25 @@
 
 [简体中文](VALIDATION.md) | **English**
 
-Date: November 10, 2026. Current version: `0.1.0a3`. This document describes only checks actually completed. Historical results for `0.1.0a2` and `0.1.0a1` are retained below.
+Date: November 11, 2026. Current version: `0.1.0a3`. This document describes only checks actually completed. Historical results for `0.1.0a2` and `0.1.0a1` are retained below.
+
+## Pre-release audit (2026-11-11)
+
+The conversion engine and all three demonstration source files are unchanged. Previously recorded WPS display evidence below remains applicable. This audit checked release files, documentation, and the installation and usage path; it did not repeat acceptance checks for every animation in the original presentation application.
+
+| Check | Result | Actual scope |
+| --- | --- | --- |
+| Full local test suite | 79 tests passed | macOS and Python 3.12.14; the conversion engine was not modified. |
+| Isolated build and installation | Passed | Packaged and extracted the source inventory, built a wheel offline, and installed it offline in a new virtual environment. Ran the entry-point command and Python module outside the project directory. No runtime dependencies. |
+| Installed example workflows | Passed | Generic demonstration: 1 → 3 slides; complex animations: 5 → 13 slides; default trigger/repetition route: 3 → 8 slides; custom route: 3 → 8 slides. All were split and validated, including paths with Chinese characters and spaces. |
+| Errors and file protection | Passed | Wrong-route validation returns 1. The source, existing output, and hard links to the source cannot be overwritten. Damaged files and unsupported effects in default mode produce no result. Explicit partial drafts and draft validation return 3. No temporary files remained. |
+| Source and installation packages | Passed | The source inventory contains 43 files. Wheel modules match the source files. MIT and both attribution languages are included, and repository and issue-report URLs were added. |
+| History and example information | No common sensitive-pattern matches | The baseline at `ba1d0f5` contains 6 commits, 85 blobs, and 122 XML/relationship files inside the examples. Author emails are GitHub noreply addresses, and example author properties use generic test names. This was a pattern check, not a complete security audit. |
+| Minimum Python version | Syntax check only | Source parses using Python 3.10 syntax. This does not establish actual execution on Python 3.10. |
+| Documentation and feedback | Prepared | Bilingual README and six supporting documents. Added an English issue-report template and clarified that command-line help and logs are currently in Chinese. |
+| Remote test workflow | Configuration updated; not run | Pinned the official checkout/setup-python v7 commits. Each job has a 10-minute timeout. Added custom-route and text-inspection steps. The workflow remains manual-only. |
+
+Conclusion: `0.1.0a3` can be prepared as a preview release. Comparison of object triggers against the original application, pixel-identical text enlargement, and actual runs on Windows/other Python environments remain incomplete. Making the repository public and publishing a Release are subsequent steps; this record does not state that either has occurred.
 
 ## 0.1.0a3: object triggers and repetition
 

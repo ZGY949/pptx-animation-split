@@ -24,11 +24,12 @@ jobs:
           - os: windows-latest
             python: '3.12'
     runs-on: ${{ matrix.os }}
+    timeout-minutes: 10
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
         with:
           persist-credentials: false
-      - uses: actions/setup-python@v6
+      - uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0
         with:
           python-version: ${{ matrix.python }}
       - run: python -m unittest discover -s tests -v
@@ -40,3 +41,6 @@ jobs:
       - run: pptx-animation-split verify examples/animation-cases.pptx animation-cases-split.pptx
       - run: pptx-animation-split split examples/interaction-repeat-cases.pptx interaction-repeat-split.pptx
       - run: pptx-animation-split verify examples/interaction-repeat-cases.pptx interaction-repeat-split.pptx
+      - run: pptx-animation-split split examples/interaction-repeat-cases.pptx custom-route-split.pptx --click-order examples/click-order.json
+      - run: pptx-animation-split verify examples/interaction-repeat-cases.pptx custom-route-split.pptx --click-order examples/click-order.json
+      - run: pptx-animation-split peek demo-split.pptx 1 3

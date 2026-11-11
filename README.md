@@ -6,11 +6,11 @@
 
 本项目是受 [PPspliT](https://github.com/maxonthegit/PPspliT) 启发、借助 AI 开发的 Python 工具，独立于原项目维护。它直接处理 PPTX，不需要启动 PowerPoint，也不是 PowerPoint 插件。
 
-当前版本：`0.1.0a3`，发布准备版。只支持部分动画。采用 [MIT 许可证](LICENSE)，保留[来源致谢](ATTRIBUTION.md)；发布状态见[发布清单](docs/RELEASE_CHECKLIST.md)。
+当前版本：`0.1.0a3`，预览版（alpha）。只支持部分动画。采用 [MIT 许可证](LICENSE)，保留[来源致谢](ATTRIBUTION.md)；发布准备记录见[发布清单](docs/RELEASE_CHECKLIST.md)。
 
 ## 快速使用
 
-需要 Python 3.10 或更新版本。运行工具只用 Python 标准库，不需要安装第三方运行依赖。当前本地验证环境为 macOS、Python 3.12，已在 WPS Office 12.1.29182 中核对演示课件与真实课件重点步骤；其他系统和演示软件尚待验证。
+需要 Python 3.10 或更新版本。运行工具只用 Python 标准库，不需要安装第三方运行依赖。命令行帮助和日志目前为中文。当前本地验证环境为 macOS、Python 3.12，已在 WPS Office 12.1.29182 中核对演示课件与真实课件重点步骤；其他系统和演示软件尚待验证。
 
 下载项目 ZIP 并解压，在终端进入项目文件夹后执行：
 
