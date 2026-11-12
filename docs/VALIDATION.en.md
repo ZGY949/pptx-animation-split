@@ -2,7 +2,25 @@
 
 [简体中文](VALIDATION.md) | **English**
 
-Latest check: November 12, 2026, local pre-publication checks for `0.1.0a4`. This document describes only completed checks and retains historical results for `0.1.0a3`, `0.1.0a2` and `0.1.0a1` below. See Releases for actual public versions.
+Latest check: November 13, 2026, pre-publication checks for `0.1.0a4`. This document describes only completed checks and retains historical results for `0.1.0a3`, `0.1.0a2` and `0.1.0a1` below. See Releases for actual public versions.
+
+## skills CLI installation, updates and static states (2026-11-13)
+
+This work preserves the maintainer's transient-visibility, media-only deduplication and test changes made during the pause. It adds a complete independently installable Skill, bilingual instructions, LF text and shared-resource synchronization. The only maintained engine is `skills/pptx-animation-split/scripts/pptx_animation_split/`; the source module, wheel and both ZIPs use that implementation.
+
+| Check | Result and scope |
+| --- | --- |
+| Current local regressions | 119 passed on macOS, Python 3.12.14, covering static states, standalone source Skill execution, complete resources, read-only synchronization and exclusion of Python build metadata |
+| Actual skills CLI | Used npm's published `skills@1.8.1`, Node.js 24.18.0 and npm 11.16.0 in isolated project directories without changing the existing user-level Skill registry lock |
+| GitHub installation and update | Installed the old candidate at `30bbaebc8e581b82df2cf56d55ca1acbc02b9b45` from the check branch, then actually ran `skills update pptx-animation-split -p -y` to obtain `0011fad791ac471a44345adb93cb529c8b7ff2a5`. Installed files match the new source. Both candidates use the unpublished `0.1.0a4` version: this validates content updates and does not imply public `v0.1.0a3` already had a Skill updater |
+| Processing after updating | Three examples produce 3, 13 and 8 slides; the custom route produces 8. All validate. A transient-visibility group example produces 4 states and validates. Installation hashes remain unchanged during processing |
+| Repeated update | A second actual update reports all project skills up to date without replacing them again |
+| Fresh remote installation | Discovers one valid Skill without treating the installation guide as a skill. The Codex shared-directory and Claude Code symlink entry points both report `0.1.0a4`. This does not establish AI invocation acceptance inside both clients |
+| Pinned release syntax | `skills@1.8.1` does not recognize this Python alpha tag through `@version` shorthand. Pinned installation therefore uses the explicit GitHub `tree/v0.1.0a4/skills/pptx-animation-split` URL, to be checked against the actual tag during publication |
+| Packaging and compatibility entry | 72 source files; both ZIP engines match source and run three examples and the custom route with unchanged bundle files. The original module, copied source Skill and isolated wheel installation work. Python build metadata does not enter distribution resources or alter the inventory |
+| Documentation and version limits | Bilingual Skill/resources, local document links and Python 3.10 syntax pass. This does not establish execution on Python 3.10, Windows or PowerPoint |
+
+No new step-by-step visual comparison in the original presentation application was performed. Existing object-trigger, text-scaling and retained-media limitations remain. Check-branch tests disabled install telemetry; actual listing on skills.sh must be checked on the site rather than inferred from installation success. Verify official tags, attachments and downloads according to the release checklist.
 
 ## Matching tool and Skill release workflow (2026-11-12, local)
 
