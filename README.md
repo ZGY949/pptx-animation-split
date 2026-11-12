@@ -6,7 +6,13 @@
 
 本项目是受 [PPspliT](https://github.com/maxonthegit/PPspliT) 启发、借助 AI 开发的 Python 工具，独立于原项目维护。它直接处理 PPTX，不需要启动 PowerPoint，也不是 PowerPoint 插件。
 
-当前版本：`0.1.0a3`，预览版（alpha）。只支持部分动画。采用 [MIT 许可证](LICENSE)，保留[来源致谢](ATTRIBUTION.md)；发布准备记录见[发布清单](docs/RELEASE_CHECKLIST.md)。
+当前仍为预览阶段（alpha），只支持部分动画。公开版本见 [Releases](https://github.com/ZGY949/pptx-animation-split/releases)，本地版本用 `python3 -m pptx_animation_split --version` 查看。采用 [MIT 许可证](LICENSE)，保留[来源致谢](ATTRIBUTION.md)；发布准备记录见[发布清单](docs/RELEASE_CHECKLIST.md)。
+
+## 选择安装包
+
+同一次发布会从一份源码生成两个包：直接使用选 `-tool.zip`，通过 AI 使用选 `-skill.zip`。Skill 包自带同版本工具，包含 Codex 插件清单。两者分别提供适用的说明，不需要同时下载。安装、更新和卸载见[工具包说明](docs/TOOL.md)与 [Skill 说明](docs/SKILL.md)。GitHub 自动生成的 Source code ZIP 仍包含整个源码项目。
+
+工具包与 Skill 包见 [v0.1.0a4 预览版](https://github.com/ZGY949/pptx-animation-split/releases/tag/v0.1.0a4)。已有 `v0.1.0a3` 仍仅提供 GitHub 源码下载，首次升级需要手动下载；下面的源码使用方法继续可用。
 
 ## 快速使用
 
@@ -106,6 +112,6 @@ pptx-animation-split split "/路径/源课件.pptx" "/路径/源课件_静态版
 python3 -m unittest discover -s tests -v
 ```
 
-现有 79 项测试包含 27 种三对象触发组合，以及文字、图片、形状、分组、延时显隐、曲线、缩放旋转、导航和文件保护。另有在 WPS 中制作并实际播放对照的[复杂动画样例](examples/README.md)，5 页拆为 13 个状态；新增触发与重复样例为 3 页拆为 8 个状态，实际验收边界另行记录。这些检查不代表所有预设效果和任意组合均已验收。查看[验证记录](docs/VALIDATION.md)、[贡献说明](CONTRIBUTING.md)和[来源致谢](ATTRIBUTION.md)。
+动画回归包含 27 种三对象触发组合，以及文字、图片、形状、分组、延时显隐、曲线、缩放旋转、导航和文件保护。另有更新检查、同版打包与隔离安装测试。在 WPS 中制作并实际播放对照的[复杂动画样例](examples/README.md)为 5 页拆成 13 个状态；触发与重复样例为 3 页拆成 8 个状态，实际验收边界另行记录。这些检查不代表所有预设效果和任意组合均已验收。查看[验证记录](docs/VALIDATION.md)、[贡献说明](CONTRIBUTING.md)和[来源致谢](ATTRIBUTION.md)。
 
 感谢 Massimo Rimondini 的 PPspliT。作者关于独立实现和署名要求的说明见[原项目讨论](https://github.com/maxonthegit/PPspliT/issues/29#issuecomment-6727916615)。本项目不代表原作者提供支持或背书。

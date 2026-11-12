@@ -1,4 +1,6 @@
 import argparse
+import json
+import os
 import sys
 import xml.etree.ElementTree as ET
 import zipfile
@@ -14,6 +16,7 @@ def parser():
         description='把 PPTX 动画点击步骤拆成静态幻灯片；不覆盖源文件或已有输出。',
     )
     result.add_argument('--version', action='version', version=__version__)
+    result.add_argument('--no-update-check', action='store_true', help='跳过 Skill 入口拆分前的联网更新检查')
     commands = result.add_subparsers(dest='command', required=True)
     split = commands.add_parser('split', help='拆分并自动校验结果')
     split.add_argument('source', help='源 .pptx 文件')
@@ -27,13 +30,25 @@ def parser():
     peek = commands.add_parser('peek', help='按放映顺序抽查文字，不能判断可见性')
     peek.add_argument('source', help='.pptx 文件')
     peek.add_argument('pages', nargs='+', help='页码，例如 1 3-5')
+    update = commands.add_parser('check-update', help='只查询公开发布信息，不下载或替换程序')
+    update.add_argument('--json', action='store_true', help='输出 JSON，供 Skill 读取')
+    update.add_argument('--pre', action='store_true', default=None, help='稳定版也检查预览版；当前为预览版时默认包含预览版')
+    update.add_argument('--timeout', type=float, default=3.0, help='联网检查时间预算，默认 3 秒，最多 15 秒')
     return result
 
 
-def main(argv=None):
+def main(argv=None, *, notify_updates=False):
     args = parser().parse_args(argv)
     try:
+        if args.command == 'check-update':
+            from .updates import check_update, update_message
+            result = check_update(include_prereleases=args.pre, timeout=args.timeout)
+            print(json.dumps(result, ensure_ascii=False, indent=2) if args.json else update_message(result))
+            return 0 if result['status'] != 'unavailable' else 1
         if args.command == 'split':
+            if notify_updates and not args.no_update_check and os.environ.get('PPTX_ANIMATION_SPLIT_NO_UPDATE_CHECK') != '1':
+                from .updates import check_update, update_message
+                print(update_message(check_update()), file=sys.stderr)
             click_orders = read_click_orders(input_file(args.source), args.click_order)
             per_slide, notes, total = split_file(args.source, args.destination, allow_partial=args.allow_partial, click_orders=click_orders)
             for name, count, groups in per_slide:

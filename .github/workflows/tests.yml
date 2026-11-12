@@ -44,3 +44,4 @@ jobs:
       - run: pptx-animation-split split examples/interaction-repeat-cases.pptx custom-route-split.pptx --click-order examples/click-order.json
       - run: pptx-animation-split verify examples/interaction-repeat-cases.pptx custom-route-split.pptx --click-order examples/click-order.json
       - run: pptx-animation-split peek demo-split.pptx 1 3
+      - run: python tools/build_release.py dist/bundles --local

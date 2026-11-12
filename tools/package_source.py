@@ -10,14 +10,14 @@ ROOT_FILES = {
     '.gitignore', 'LICENSE',
 }
 SOURCE_DIRECTORIES = {
-    'pptx_animation_split', 'tests', 'examples', 'docs', 'tools', '.github',
+    'pptx_animation_split', 'skills', 'tests', 'examples', 'docs', 'tools', '.github',
 }
 TEXT_SUFFIXES = {'.py', '.md', '.toml', '.json', '.txt', '.yml', '.yaml'}
 
 
-def source_files():
-    for path in sorted(ROOT.rglob('*')):
-        relative = path.relative_to(ROOT)
+def source_files(root=ROOT):
+    for path in sorted(root.rglob('*')):
+        relative = path.relative_to(root)
         if not path.is_file() or path.is_symlink() or '__pycache__' in relative.parts:
             continue
         if len(relative.parts) == 1 and path.name in ROOT_FILES:

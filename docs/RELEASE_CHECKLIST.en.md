@@ -2,7 +2,18 @@
 
 [简体中文](RELEASE_CHECKLIST.md) | **English**
 
-Repository: [ZGY949/pptx-animation-split](https://github.com/ZGY949/pptx-animation-split). This checklist records the state at the pre-publication check on November 11, 2026: the repository was private, the maintainer had authorized source uploads, and no GitHub Release or PyPI package had been published. For subsequent code and publication status, refer to repository files, commit history, and the Releases page.
+Repository: [ZGY949/pptx-animation-split](https://github.com/ZGY949/pptx-animation-split) became public on November 11, 2026 with the [v0.1.0a3 preview](https://github.com/ZGY949/pptx-animation-split/releases/tag/v0.1.0a3). That release provides only GitHub's automatic source downloads, with no PyPI package. This release targets [v0.1.0a4](https://github.com/ZGY949/pptx-animation-split/releases/tag/v0.1.0a4), providing matching tool and Skill bundles; see Releases for actual public status and attachments. The original checklist below retains historical first-publication checks.
+
+## Publish matching tool and Skill bundles
+
+1. Update the version in `pptx_animation_split/__init__.py`, maintained source and corresponding bilingual documents, including the README's bundle publication status. Do not maintain a second engine in source.
+2. Run relevant tests and build local test bundles with `python3 tools/build_release.py dist/local-check --local`. Review file scope, actual entry versions and limitations. Local `release.json` has `publishable: false`; do not upload it as an official build.
+3. Obtain the necessary Git authorization, commit the complete change, confirm a clean workspace and create the matching version tag pointing to that commit. Pushing and publishing follow the maintainer's separate authorization.
+4. From that clean tagged commit, run `python3 tools/build_release.py dist/release`. The script rejects dirty workspaces, missing or misplaced tags, inconsistent versions/engines and failed example runs. Review `validation.json`, both ZIP files and `SHA256SUMS.txt`. Confirm `release.json` has `publishable: true`, the correct version, source commit, compatibility requirements and attachment hashes.
+5. Upload the generated `-tool.zip`, `-skill.zip`, `release.json`, `validation.json` and `SHA256SUMS.txt` together to one GitHub Release. Mark preview status and known limitations clearly, and do not mix artifacts from different builds. GitHub's source ZIP remains the full project.
+6. After publication, download and verify attachment hashes, run the check from an older version that already supports it, verify the notification, matching URLs and compatibility decision, then test the downloaded bundles. When introducing update checking, `v0.1.0a3` has no such command and requires a manual upgrade. Check real release-manifest reads first; verify cross-version notifications after a subsequent compatible release. Actual remote reads currently cover existing release metadata; future newer-release notifications have not received remote acceptance testing.
+
+Version checks do not replace programs, upload presentations or subscribe users to notifications. See the [tool guide](TOOL.en.md) and [Skill guide](SKILL.en.md) for installation, updates, rollback and removal. The manual Tests workflow includes dual-bundle builds; it has not been run remotely for this change and does not publish automatically.
 
 ## Prepared
 
@@ -28,7 +39,7 @@ See [VALIDATION.en.md](VALIDATION.en.md) for actual results. Object triggers rem
 - [x] **Confirm upload scope and repository name.** The maintainer confirmed uploading first to the private repository `ZGY949/pptx-animation-split`. Only standalone project files are included; teaching materials in the parent directory are excluded. The GitHub connection selects only this repository and no other private repositories.
 - [x] **Review the source package for this upload.** It contains only source code, documentation, configuration, the MIT License, and generic demonstration decks. Checks for common credentials, private keys, notification-link tokens, and personal absolute paths found no matches. Real decks, temporary WPS lock files, caches, and validation artifacts are excluded. Review the actual files before each future commit or upload; `.gitignore` is not a substitute for that review.
 
-## Follow-up before public release
+## Follow-up before the first public release (historical record)
 
 1. Review the private repository's files, MIT License, attribution, and README rendering. At publication, confirm the tag targets the audited commit and check the downloads and their SHA-256 checksums.
 2. If further cross-platform validation is needed, manually run Tests from the Actions page after confirming the account's available allowance and costs. The workflow does not run automatically on push and does not publish automatically.

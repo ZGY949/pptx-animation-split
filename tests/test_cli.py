@@ -68,6 +68,27 @@ class CommandLineTests(unittest.TestCase):
         self.assertEqual(self.run_cli('split', self.source, self.source)[0], 1)
         self.assertEqual(self.source.read_bytes(), before)
 
+    def test_split_preserves_carriage_returns_in_slide_text(self):
+        text = '第一行\r第二行\r\n第三行\n第四行'
+        with zipfile.ZipFile(self.source) as archive:
+            parts = {item.filename: archive.read(item.filename) for item in archive.infolist()}
+        part = 'ppt/slides/slide1.xml'
+        root = ET.fromstring(parts[part])
+        next(root.iter(A + 't')).text = text
+        parts[part] = ET.tostring(root).replace(b'\r', b'&#13;')
+        with zipfile.ZipFile(self.source, 'w') as archive:
+            for name, data in parts.items():
+                archive.writestr(name, data)
+        digest = hashlib.sha256(self.source.read_bytes()).digest()
+        status, _, errors = self.run_cli('split', self.source, self.destination)
+        self.assertEqual(status, 0, errors)
+        self.assertEqual(hashlib.sha256(self.source.read_bytes()).digest(), digest)
+        with zipfile.ZipFile(self.destination) as archive:
+            for name in slide_order(archive):
+                root = ET.fromstring(archive.read(name))
+                self.assertIn(text, [node.text for node in root.iter(A + 't')])
+        self.assertEqual(self.run_cli('verify', self.source, self.destination)[0], 0)
+
     def test_existing_output_is_not_overwritten(self):
         self.destination.write_bytes(b'existing result')
         self.assertEqual(self.run_cli('split', self.source, self.destination)[0], 1)

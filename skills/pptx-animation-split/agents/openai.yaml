@@ -1,0 +1,4 @@
+interface:
+  display_name: "PPTX Animation Split"
+  short_description: "Split PPTX animations into static slides safely"
+  default_prompt: "Use $pptx-animation-split to turn this animated PPTX into static slides and report the validation limits."

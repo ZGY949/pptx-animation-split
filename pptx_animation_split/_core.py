@@ -652,7 +652,7 @@ def serialize(root, namespaces=None):
             ET.register_namespace(prefix, uri)
         except ValueError:
             pass
-    data = ET.tostring(root, encoding='UTF-8')
+    data = ET.tostring(root, encoding='UTF-8').replace(b'\r', b'&#13;')
     declared = {prefix for prefix, _ in collect_ns(data).items()}
     required = set()
     for element in root.iter():

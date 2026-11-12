@@ -2,7 +2,26 @@
 
 [简体中文](VALIDATION.md) | **English**
 
-Date: November 11, 2026. Current version: `0.1.0a3`. This document describes only checks actually completed. Historical results for `0.1.0a2` and `0.1.0a1` are retained below.
+Latest check: November 12, 2026, local pre-publication checks for `0.1.0a4`. This document describes only completed checks and retains historical results for `0.1.0a3`, `0.1.0a2` and `0.1.0a1` below. See Releases for actual public versions.
+
+## Matching tool and Skill release workflow (2026-11-12, local)
+
+This change adds Skill instructions, a shared launcher, update checking and matching bundles without changing animation conversion rules. It also includes the previously retained carriage-return fix in `_core.py` and its regression in `tests/test_cli.py`, both preserved unchanged during Skill development. This version is not identical to `v0.1.0a3`.
+
+| Check | Result | Actual scope |
+| --- | --- | --- |
+| Local regressions | 105 passed | macOS, Python 3.12.14; 25 new tests cover release consistency, isolated installation and updates |
+| Dual bundles and entry points | Passed | One snapshot generates a tool bundle and a Skill bundle with Codex plugin manifests; engine files match source hashes, and Python/plugin SemVer representations come from one version |
+| Independent installation | Passed | Extracted into isolated directories and ran both launchers outside the project with Python `-I -B`; also copied the complete Skill into an isolated project's `.agents/skills` and split a deck without importing source-project program files |
+| Example workflows | Passed | Each launcher splits and verifies demo 1 → 3, complex animations 5 → 13, triggers/repeats 3 → 8, and the custom trigger route 3 → 8; text inspection works and installation hashes are unchanged after use |
+| Mixed or damaged files | Passed | Missing files, modified code/instructions and inconsistent bundle versions are rejected; builds reject incorrect plugin versions, engines that differ from source and existing destinations; official builds require a clean commit and matching tag |
+| Update decisions | Simulation passed | Numeric version ordering, stable/preview channels, draft filtering, matching bundles/manifests, Python/interface compatibility, asset digests, offline/timeout/rate-limit and malformed responses; failed checks do not block Skill splitting and ordinary tool use does not check the network |
+| Actual GitHub query | Passed | Read public releases without credentials and observed `v0.1.0a3`; no new version has been published, so cross-version remote notification acceptance remains incomplete and is not established by simulation |
+| Skill format and host discovery | Passed within scope | Both maintained Skill and project adapter pass skill-creator validation; Codex CLI `0.167.0-alpha.4.1` lists plugin `0.1.0-alpha.4` with temporary command-level source configuration, without changing persistent plugin settings; no desktop plugin-menu installation or new AI-chat execution was performed |
+| Existing project entry | Passed | Running `.agents/skills/pptx-animation-split/scripts/run.py --version` outside the project reports actual `0.1.0a4`; instructions delegate to the maintained project Skill instead of duplicating the general workflow |
+| Documentation and version limits | Checked | Separate bilingual bundle READMEs and installation/update/rollback/removal guides; source-document local links pass; 24 Python files parse with 3.10 syntax, which does not establish execution on Python 3.10 |
+
+The manifest generated for local installation testing has `publishable: false` and cannot serve as an official release. Publication requires committing, tagging and rebuilding according to the checklist, producing `publishable: true` and checking the source commit. No push, release or remote Actions run occurred during the local checks above. No new WPS/PowerPoint visual acceptance or Windows execution was performed; existing object-trigger, text-scaling and cross-platform limitations remain. Introducing update checks requires a manual first upgrade for `v0.1.0a3` users.
 
 ## Pre-release audit (2026-11-11)
 

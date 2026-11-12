@@ -6,7 +6,13 @@ Split an animated PPTX into static slides. Each source slide produces a snapshot
 
 This Python tool was developed with AI assistance and inspired by [PPspliT](https://github.com/maxonthegit/PPspliT). It is maintained independently of that project. It edits PPTX files directly, without starting PowerPoint, and is not a PowerPoint add-in.
 
-Current version: `0.1.0a3`, an alpha preview version. Only some animations are supported. The project uses the [MIT License](LICENSE) and includes [attribution](ATTRIBUTION.en.md). See the [release checklist](docs/RELEASE_CHECKLIST.en.md) for the release preparation record.
+The project remains an alpha preview supporting a subset of animations. See [Releases](https://github.com/ZGY949/pptx-animation-split/releases) for public versions and run `python3 -m pptx_animation_split --version` for the local version. The project uses the [MIT License](LICENSE) and retains [attribution](ATTRIBUTION.en.md). See the [release checklist](docs/RELEASE_CHECKLIST.en.md) for preparation status.
+
+## Choose a bundle
+
+Each release builds two bundles from one source snapshot: choose `-tool.zip` for direct use or `-skill.zip` for use through an AI. The Skill bundle includes the matching tool and Codex plugin manifests. Each has instructions for its audience; downloading both is unnecessary. See the [tool guide](docs/TOOL.en.md) and [Skill guide](docs/SKILL.en.md) for installation, updates and removal. GitHub's automatically generated Source code ZIP still contains the full project.
+
+Find the tool and Skill bundles in the [v0.1.0a4 preview](https://github.com/ZGY949/pptx-animation-split/releases/tag/v0.1.0a4). The existing `v0.1.0a3` still offers only GitHub's source downloads and requires a manual first upgrade. The source workflow below remains available.
 
 ## Quick start
 
@@ -106,6 +112,6 @@ Run from the project root:
 python3 -m unittest discover -s tests -v
 ```
 
-The current 79 tests cover 27 combinations of triggers for three objects, as well as text, images, shapes, groups, delayed visibility changes, curves, scaling, rotation, navigation, and file protection. The repository also includes [complex animation examples](examples/README.en.md) authored in WPS and compared against playback: 5 source slides expand to 13 states. The additional trigger and repetition examples expand from 3 slides to 8 states, with the limits of their actual validation recorded separately. These checks do not establish support for every preset effect or arbitrary combination. See the [validation record](docs/VALIDATION.en.md), [contribution guide](CONTRIBUTING.en.md), and [attribution](ATTRIBUTION.en.md).
+Animation regressions cover 27 combinations of triggers for three objects, as well as text, images, shapes, groups, delayed visibility changes, curves, scaling, rotation, navigation and file protection. Additional tests cover update checks, matching bundles and isolated installation. The [complex animation examples](examples/README.en.md) authored in WPS and compared against playback expand from 5 source slides to 13 states. The trigger and repetition examples expand from 3 slides to 8 states, with the limits of actual validation recorded separately. These checks do not establish support for every preset effect or arbitrary combination. See the [validation record](docs/VALIDATION.en.md), [contribution guide](CONTRIBUTING.en.md), and [attribution](ATTRIBUTION.en.md).
 
 Thanks to Massimo Rimondini for PPspliT. The author's clarification on independent implementations and attribution is available in the [original project discussion](https://github.com/maxonthegit/PPspliT/issues/29#issuecomment-6727916615). This project does not imply support or endorsement by the original author.
