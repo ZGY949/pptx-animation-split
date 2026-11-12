@@ -133,11 +133,13 @@ class ReleasePackageTests(unittest.TestCase):
             build_release(destination, local=True)
         self.assertFalse(destination.exists())
 
-    def test_skill_source_is_in_source_archive_inventory_and_no_bundled_engine_is_maintained(self):
+    def test_skill_source_contains_the_only_maintained_engine(self):
         names = {path.relative_to(ROOT).as_posix() for path in source_files()}
         self.assertIn('skills/pptx-animation-split/SKILL.md', names)
         self.assertIn('skills/pptx-animation-split/scripts/run.py', names)
-        self.assertFalse((ROOT / 'skills/pptx-animation-split/scripts/pptx_animation_split').exists())
+        self.assertTrue((ROOT / 'skills/pptx-animation-split/scripts/pptx_animation_split/_core.py').is_file())
+        self.assertFalse((ROOT / 'pptx_animation_split/_core.py').exists())
+        self.assertEqual([path.name for path in (ROOT / 'pptx_animation_split').glob('*.py')], ['__init__.py'])
 
     def test_packaging_rejects_plugin_metadata_with_a_different_version(self):
         from tools.build_release import make_packages

@@ -26,7 +26,11 @@ Repository = "https://github.com/ZGY949/pptx-animation-split"
 Issues = "https://github.com/ZGY949/pptx-animation-split/issues"
 
 [tool.setuptools.packages.find]
+where = ["skills/pptx-animation-split/scripts"]
 include = ["pptx_animation_split*"]
+
+[tool.setuptools.package-dir]
+"" = "skills/pptx-animation-split/scripts"
 
 [tool.setuptools.dynamic]
 version = {attr = "pptx_animation_split.__version__"}

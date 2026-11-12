@@ -1,0 +1,32 @@
+{
+  "files": {
+    "ATTRIBUTION.en.md": "479500c82e4c4a05d1b08b7f68af7634e8590753ee32001a014dadfa169a662c",
+    "ATTRIBUTION.md": "e21a93b5c84068476d4c6e102e0ec527fe6894b37bbf5737180aabc6a8b9d2e4",
+    "LICENSE": "0d1ae8c8c8fa728ec774d85754f956f8591dfb3f7b96aa7e87362eaee5641104",
+    "SKILL.en.md": "f47c39260fcc3de7cd446bf33dd06af6fc2aeea09cb8130850f58ec885927be3",
+    "SKILL.md": "f3e58d803f09a214652c90ad1a682387c55982d2fde113c663740cbcf58e0e0c",
+    "agents/openai.yaml": "b9b19dd88a6988ab1c4334ff6e573882c9723c4bc42291ce928af7fd0574dd75",
+    "references/INSTALL.en.md": "9731331ecaf20cd820de25118d7e84affd179016b4d47aaa3e40f6a173ab4409",
+    "references/INSTALL.md": "67f8b6c2205a70c73172842623fe73304a89705b67952bcc4b392ccb0999e6d0",
+    "references/LIMITATIONS.en.md": "32b9473b0d04e9309b43d91a720f0d8035398113f54448bedc4ab9b1d7f95571",
+    "references/LIMITATIONS.md": "81c67a1b17c301b81e0e36d4e02b990894e052c0ee26057eda14b9ba34cf5aea",
+    "references/click-order.json": "e2c0b8092cdde08594d839a5f91b312f8990a0fb3d67c43dacd948a6c68ac179",
+    "scripts/pptx_animation_split/__init__.py": "0e782cd3e9f8ac041c74ba01938eda5b3b731442907c0b08c8264e6c51d89127",
+    "scripts/pptx_animation_split/__main__.py": "935a1c1166b0c1ea35a82256345000bf2c73ded718d77773bc27a71ecce28f7d",
+    "scripts/pptx_animation_split/_core.py": "12ce4053674ae6a308d7cef16a995d25ed528d256bdc26acb1aa9b9625503fa7",
+    "scripts/pptx_animation_split/_interaction.py": "083662a497e814f577723869b205a860225b44ce3fc67f379f13297d65db1c2b",
+    "scripts/pptx_animation_split/_motion.py": "e75bc6ab8e6b9e3b9f7c8d1a3aa9280c424706e15eaba273c6c6c28418e3f0b3",
+    "scripts/pptx_animation_split/_repetition.py": "6efb1901e47d916e5ec3135e37b5b8eae2e8dfe1d726e0e29a661f5c572046d3",
+    "scripts/pptx_animation_split/_static.py": "63aa8047f6d1bf87c9e1c089962ab8b6d8498d70d45faf24329a28ed8fab9de8",
+    "scripts/pptx_animation_split/_version.py": "2772ccba8340efa8c5bfb93547109a767e425459a2e9197b62f0f4ffe2aed499",
+    "scripts/pptx_animation_split/bundle.py": "28efcff69c304076649e4a14fa10dd838061829d99bf2473ba5d83a70d925555",
+    "scripts/pptx_animation_split/cli.py": "ed5fb8fbf3ac9a011f80988b5b8a17d3d15ebf797338cd976971b426a3a08e26",
+    "scripts/pptx_animation_split/operations.py": "e73444a9d6c19a54a6eec7d184d8ef594c52f7e4a418f539f4a9fd56def89ce3",
+    "scripts/pptx_animation_split/updates.py": "8bfe24e4185d3dbc8faebfc8cf9867bac61ad17f057c8b526bc65775fe3703b4",
+    "scripts/pptx_animation_split/verify.py": "d518f63f0c77868dc05612fd4cd8fd3c9b76c589b49b5782467216db0e6ebc8d",
+    "scripts/run.py": "ba5fd81d1cbb57f952e03facc8bd9fcc7a49a219d350229ce2f5407ea5ea5692"
+  },
+  "kind": "skill",
+  "schema_version": 1,
+  "version": "0.1.0a4"
+}

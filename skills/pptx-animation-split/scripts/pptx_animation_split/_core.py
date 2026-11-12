@@ -12,6 +12,7 @@ from xml.sax.saxutils import quoteattr
 from ._motion import motion_endpoint
 from ._interaction import expand_interactions
 from ._repetition import repetition
+from ._static import groups_for_state, static_state_plan
 
 CT = 'http://schemas.openxmlformats.org/package/2006/content-types'
 PR = 'http://schemas.openxmlformats.org/package/2006/relationships'
@@ -742,7 +743,9 @@ def _split_archive(z, dst, log, click_orders=None):
         if rel.get('Type', '').endswith('/slide') and rel.get('TargetMode') != 'External':
             old_slide_rels[rel.get('Id')] = resolve_part('ppt/presentation.xml', rel.get('Target', ''))
 
-    plan = []          # (src_slide_name, step_index)
+    plan = []
+    states_by_source = {}
+    groups_by_source = {}
     per_slide = []
     all_notes = []
     for s in src_slides:
@@ -768,9 +771,14 @@ def _split_archive(z, dst, log, click_orders=None):
                             raise ValueError('%s: 无法保留段落动画目标 %s 的排版' % (s, effect['spid']))
         all_notes += [(s, n) for n in notes]
         nsteps = len(groups)
-        for k in range(-1, nsteps):
+        states, notices = static_state_plan(z.read(s), groups, slide_size, clone_and_render)
+        states_by_source[s] = states
+        groups_by_source[s] = groups
+        for notice in notices:
+            log('%s：%s' % (s, notice))
+        for k in range(len(states)):
             plan.append((s, k))
-        per_slide.append((s, nsteps + 1, nsteps))
+        per_slide.append((s, len(states), nsteps))
 
     log('输出页数: %d (原 %d 页)' % (len(plan), len(src_slides)))
 
@@ -799,8 +807,9 @@ def _split_archive(z, dst, log, click_orders=None):
     for idx, (s, k) in enumerate(plan, start=1):
         new_name = 'ppt/slides/slide%d.xml' % idx
         source_root = ET.fromstring(z.read(s))
-        groups, _ = parse_slide_animation(source_root, click_orders.get(s))
-        root = clone_and_render(z.read(s), groups, k, slide_size)
+        step, prefix = states_by_source[s][k]
+        groups = groups_for_state(groups_by_source[s], step, prefix)
+        root = clone_and_render(z.read(s), groups, step, slide_size)
         new_slides[new_name] = serialize(root, collect_ns(z.read(s)))
 
         first_idx = first_idx_by_src[s]

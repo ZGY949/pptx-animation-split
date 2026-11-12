@@ -187,7 +187,7 @@ class InteractionAndRepetitionTests(unittest.TestCase):
         main = next(n for n in root.iter(P + 'cTn') if n.get('nodeType') == 'mainSeq')
         main.find(P + 'childTnLst/' + P + 'par/' + P + 'cTn').set('repeatCount', '3000')
         output = self.convert(root)
-        self.assertEqual(['2' in object_ids(page) for page in output], [False, False])
+        self.assertEqual(['2' in object_ids(page) for page in output], [False, True, False])
 
     def test_loop_until_next_click_has_a_bounded_representative_state(self):
         root = slide([(2, 'picture'), (3, 'shape')], [effect(2, 'emph', behavior='animScale', attributes={}, scale=(150000, 150000), timing={'repeatCount': 'indefinite'}), effect(3)])

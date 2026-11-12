@@ -2,7 +2,7 @@
 
 **简体中文** | [English](README.en.md)
 
-把带动画的 PPTX 拆成静态幻灯片：保留每张源页进入后自动动画结束的状态，以及各次点击结束后的状态，便于课件分发、打印或后续导出 PDF。
+把带动画的 PPTX 拆成静态幻灯片：保留初始自动动画和各次点击的结束状态，补充同一步中短暂出现后消失的对象画面，合并仅含媒体控制且画面未变的重复步骤，便于课件分发、打印或后续导出 PDF。
 
 本项目是受 [PPspliT](https://github.com/maxonthegit/PPspliT) 启发、借助 AI 开发的 Python 工具，独立于原项目维护。它直接处理 PPTX，不需要启动 PowerPoint，也不是 PowerPoint 插件。
 
@@ -10,9 +10,17 @@
 
 ## 选择安装包
 
-同一次发布会从一份源码生成两个包：直接使用选 `-tool.zip`，通过 AI 使用选 `-skill.zip`。Skill 包自带同版本工具，包含 Codex 插件清单。两者分别提供适用的说明，不需要同时下载。安装、更新和卸载见[工具包说明](docs/TOOL.md)与 [Skill 说明](docs/SKILL.md)。GitHub 自动生成的 Source code ZIP 仍包含整个源码项目。
+同一次发布会从一份源码生成两个包：直接使用选 `-tool.zip`，通过 AI 使用选 `-skill.zip`。Skill 包自带同版本工具，包含 Codex 插件清单。两者分别提供适用的说明，不需要同时下载。安装、更新和卸载见[工具包说明](docs/TOOL.md)与 [Skill 说明](docs/SKILL_INSTALL.md)。GitHub 自动生成的 Source code ZIP 仍包含整个源码项目。
 
 工具包与 Skill 包见 [v0.1.0a4 预览版](https://github.com/ZGY949/pptx-animation-split/releases/tag/v0.1.0a4)。已有 `v0.1.0a3` 仍仅提供 GitHub 源码下载，首次升级需要手动下载；下面的源码使用方法继续可用。
+
+通过 AI 使用时，也可在项目目录直接安装完整 Skill：
+
+```sh
+npx skills add ZGY949/pptx-animation-split --skill pptx-animation-split
+```
+
+按提示选择 AI 工具；默认安装到当前项目，加 `-g` 安装到个人目录。安装器需要 Node.js 22.20 或更新版本及 npm，实际拆分需要 Python 3.10 或更新版本。项目级更新使用 `npx skills update pptx-animation-split -p -y`。Skill 目录自带唯一维护的引擎、双语指令、许可和参考资料，安装后不依赖原仓库位置。
 
 ## 快速使用
 
@@ -51,7 +59,7 @@ python3 -m pptx_animation_split split examples/interaction-repeat-cases.pptx tri
 python3 -m pptx_animation_split verify examples/interaction-repeat-cases.pptx trigger-split.pptx --click-order examples/click-order.json
 ```
 
-有限次重复按完整周期计算持续时间和显隐先后，每个点击仍输出一个状态，不按重复次数增加页面。无限循环没有唯一终态，默认保留一轮完成后的代表状态，并在日志说明；它不能还原在任意时刻点击停止时的画面。停在半周期、重复累加等未支持情形仍会停止生成。
+有限次重复按完整周期计算持续时间和显隐先后，不按重复次数增加页面；同一步中出现后消失的对象会额外保留完整可见状态。无限循环没有唯一终态，默认保留一轮完成后的代表状态，并在日志说明；它不能还原在任意时刻点击停止时的画面。停在半周期、重复累加等未支持情形仍会停止生成。
 
 本机 macOS WPS 已实际播放有限重复和无限循环样例，但对象触发输入在该环境未成功播放，不能把这部分标为原软件对照通过；文字放大的少量像素差异仍未消除。详情见[验证记录](docs/VALIDATION.md)。
 
@@ -81,7 +89,7 @@ python3 -m pptx_animation_split peek "/路径/源课件_静态版.pptx" 1 3-5
 ## 支持范围
 
 - 文字、图片、形状和分组的进入、退出，以及部分按段落显示或隐藏的动画。
-- 点击、同时、之后和延时组合；进入页后自动执行的效果合并到首个静态状态。
+- 点击、同时、之后和延时组合；保留短暂显隐对象的可见与恢复状态，仅合并纯媒体控制造成的相邻重复画面。
 - 实验性对象触发展开、可选自定义点击顺序，以及有限整周期重复和无限循环代表状态。
 - 公式的兼容分支、旧式嵌入公式预览和段落占位；保留原生结构，不把公式改写为普通文字。
 - 部分文字变色、按角度旋转、图片和形状缩放；本地字号明确的文字支持等比缩放。

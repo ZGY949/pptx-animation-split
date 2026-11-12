@@ -7,7 +7,7 @@ ROOT = Path(__file__).resolve().parents[1]
 ROOT_FILES = {
     'README.md', 'README.en.md', 'ATTRIBUTION.md', 'ATTRIBUTION.en.md',
     'CONTRIBUTING.md', 'CONTRIBUTING.en.md', 'pyproject.toml',
-    '.gitignore', 'LICENSE',
+    '.gitignore', '.gitattributes', 'LICENSE',
 }
 SOURCE_DIRECTORIES = {
     'pptx_animation_split', 'skills', 'tests', 'examples', 'docs', 'tools', '.github',
@@ -18,12 +18,12 @@ TEXT_SUFFIXES = {'.py', '.md', '.toml', '.json', '.txt', '.yml', '.yaml'}
 def source_files(root=ROOT):
     for path in sorted(root.rglob('*')):
         relative = path.relative_to(root)
-        if not path.is_file() or path.is_symlink() or '__pycache__' in relative.parts:
+        if not path.is_file() or path.is_symlink() or any(part in {'__pycache__', '.git'} or part.endswith(('.egg-info', '.dist-info')) for part in relative.parts):
             continue
         if len(relative.parts) == 1 and path.name in ROOT_FILES:
             yield path
         elif relative.parts[0] in SOURCE_DIRECTORIES and (
-            path.suffix in TEXT_SUFFIXES or relative.as_posix() in {'examples/demo.pptx', 'examples/animation-cases.pptx', 'examples/interaction-repeat-cases.pptx'}
+            path.suffix in TEXT_SUFFIXES or path.name == 'LICENSE' or relative.as_posix() in {'examples/demo.pptx', 'examples/animation-cases.pptx', 'examples/interaction-repeat-cases.pptx'}
         ):
             yield path
 

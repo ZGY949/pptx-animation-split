@@ -6,14 +6,14 @@ Repository: [ZGY949/pptx-animation-split](https://github.com/ZGY949/pptx-animati
 
 ## Publish matching tool and Skill bundles
 
-1. Update the version in `pptx_animation_split/__init__.py`, maintained source and corresponding bilingual documents, including the README's bundle publication status. Do not maintain a second engine in source.
+1. Update `skills/pptx-animation-split/scripts/pptx_animation_split/_version.py`, maintained source and bilingual documents, run `python3 tools/sync_skill.py` and pass `--check`, and review the README's bundle publication status. Maintain only one engine.
 2. Run relevant tests and build local test bundles with `python3 tools/build_release.py dist/local-check --local`. Review file scope, actual entry versions and limitations. Local `release.json` has `publishable: false`; do not upload it as an official build.
 3. Obtain the necessary Git authorization, commit the complete change, confirm a clean workspace and create the matching version tag pointing to that commit. Pushing and publishing follow the maintainer's separate authorization.
 4. From that clean tagged commit, run `python3 tools/build_release.py dist/release`. The script rejects dirty workspaces, missing or misplaced tags, inconsistent versions/engines and failed example runs. Review `validation.json`, both ZIP files and `SHA256SUMS.txt`. Confirm `release.json` has `publishable: true`, the correct version, source commit, compatibility requirements and attachment hashes.
 5. Upload the generated `-tool.zip`, `-skill.zip`, `release.json`, `validation.json` and `SHA256SUMS.txt` together to one GitHub Release. Mark preview status and known limitations clearly, and do not mix artifacts from different builds. GitHub's source ZIP remains the full project.
 6. After publication, download and verify attachment hashes, run the check from an older version that already supports it, verify the notification, matching URLs and compatibility decision, then test the downloaded bundles. When introducing update checking, `v0.1.0a3` has no such command and requires a manual upgrade. Check real release-manifest reads first; verify cross-version notifications after a subsequent compatible release. Actual remote reads currently cover existing release metadata; future newer-release notifications have not received remote acceptance testing.
 
-Version checks do not replace programs, upload presentations or subscribe users to notifications. See the [tool guide](TOOL.en.md) and [Skill guide](SKILL.en.md) for installation, updates, rollback and removal. The manual Tests workflow includes dual-bundle builds; it has not been run remotely for this change and does not publish automatically.
+Version checks do not replace programs, upload presentations or subscribe users to notifications. See the [tool guide](TOOL.en.md) and [Skill guide](SKILL_INSTALL.en.md) for installation, updates, rollback and removal. The manual Tests workflow includes dual-bundle builds; it has not been run remotely for this change and does not publish automatically.
 
 ## Prepared
 

@@ -17,8 +17,8 @@ python3 -m unittest discover -s tests -v
 当前目录结构：
 
 ```text
-pptx_animation_split/  转换引擎、校验和命令行
-skills/                Skill 指令、入口和界面元数据；不另存引擎
+pptx_animation_split/  源码命令行的兼容入口
+skills/                完整 Skill；引擎只维护在 scripts/pptx_animation_split/
 tests/                 回归与文件操作测试
 examples/              可公开的演示课件
 docs/                  来源基线、限制、验证和发布准备
@@ -29,9 +29,18 @@ README 的中文首页为 `README.md`，英文版为 `README.en.md`；配套文�
 
 ## 工具与 Skill 同步
 
-只维护 `pptx_animation_split/` 中的引擎。源码 Skill 的 `scripts/run.py` 直接引用它；打包时才把同一份引擎复制进两个安装包。修改 `skills/pptx-animation-split/SKILL.md` 不会自动修改 Python 算法。不要编辑已解压的发行包来开发。
+引擎只维护在 `skills/pptx-animation-split/scripts/pptx_animation_split/`，根目录 `pptx_animation_split/__init__.py` 让原来的 `python3 -m pptx_animation_split` 用法继续可用；wheel 直接安装这份引擎，工具 ZIP 也从这里生成。标准 skills CLI 安装复制完整 Skill 文件夹，包含引擎及配套资源。修改 `SKILL.md` 不会自动修改 Python 算法，不编辑已解压的发行包来开发。
 
-版本只在 `pptx_animation_split/__init__.py` 维护；插件使用的 SemVer 格式由同一个版本转换生成。安装与卸载说明分别维护在 `docs/TOOL*.md`、`docs/SKILL*.md`，打包时生成各包自己的 README。限制和来源说明也从正式文档生成。
+版本只在引擎目录的 `_version.py` 维护，插件使用的 SemVer 由它转换生成。中文正式指令为 `skills/pptx-animation-split/SKILL.md`，英文为 `SKILL.en.md`。安装说明维护在 `docs/TOOL*.md` 与 `docs/SKILL_INSTALL*.md`，限制、来源和许可也以根目录正式文档为准；生成的 Skill 副本及 `bundle.json` 一同提交，保证直接从 GitHub 安装时完整可用。`.gitattributes` 统一文本为 LF，以减少检出造成的哈希差异。
+
+修改引擎、Skill 指令或共享文档后先同步，再检查：
+
+```sh
+python3 tools/sync_skill.py
+python3 tools/sync_skill.py --check
+```
+
+同步只生成参考资料、许可证和文件清单，不复制第二套引擎。`--check` 不写文件，正式构建和本地试装都会拒绝不同步的资源。不要把安装说明命名为其他位置的 `SKILL.md`，避免被安装器误当成技能入口。
 
 本地试装构建（输出目录必须尚不存在）：
 

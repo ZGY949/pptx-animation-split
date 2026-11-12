@@ -6,14 +6,14 @@
 
 ## 后续版本的工具与 Skill 发布
 
-1. 在 `pptx_animation_split/__init__.py` 更新版本，修改正式源码和对应中英文文档，复核 README 的分包发布状态；源码中不另存第二套引擎。
+1. 在 `skills/pptx-animation-split/scripts/pptx_animation_split/_version.py` 更新版本，修改正式源码和双语文档，运行 `python3 tools/sync_skill.py` 并通过 `--check`，复核 README 的分包发布状态；引擎只维护一份。
 2. 运行相关测试，使用 `python3 tools/build_release.py dist/local-check --local` 做本地试装。核对实际文件范围、入口版本和限制；本地包的 `release.json` 标记 `publishable: false`，不能上传冒充正式构建。
 3. 取得所需 Git 操作授权后提交本次完整改动，确认工作区干净，创建对应版本标签并核对其指向该提交；推送和发布另按维护者授权执行。
 4. 从该干净标签提交运行 `python3 tools/build_release.py dist/release`。脚本会拒绝脏工作区、缺失或错位的标签、版本/引擎不一致及样例执行失败。核对 `validation.json`、两个 ZIP 与 `SHA256SUMS.txt`；确认 `release.json` 的 `publishable` 为 `true`，版本、源提交、兼容要求及附件哈希正确。
 5. 在同一个 GitHub Release 中上传本次生成的 `-tool.zip`、`-skill.zip`、`release.json`、`validation.json` 和 `SHA256SUMS.txt`，明确标注预览版及已知限制。不要跨构建混用附件。GitHub 自带源码 ZIP 继续保留完整项目。
 6. 发布后下载并核对附件哈希，从已支持更新检查的旧版本实际运行查询，验证新版通知、对应下载地址与兼容判断，再从下载包试装。首次引入更新检查时，旧 `v0.1.0a3` 没有该命令，须手动升级；先核对真实发布清单读取，跨版本提醒留到后续兼容发布实测。当前只有现有版本信息查询通过真实远端读取，未来新版通知尚未完成远端验收。
 
-版本检查不自动替换程序，不上传课件，不订阅用户通知。安装、更新、回退和卸载步骤见 [工具包说明](TOOL.md)、[Skill 说明](SKILL.md)。手动 Tests 工作流已包含双包构建步骤；尚未为本次改动远端运行，仍不自动发布。
+版本检查不自动替换程序，不上传课件，不订阅用户通知。安装、更新、回退和卸载步骤见 [工具包说明](TOOL.md)、[Skill 说明](SKILL_INSTALL.md)。手动 Tests 工作流已包含双包构建步骤；尚未为本次改动远端运行，仍不自动发布。
 
 ## 已准备
 

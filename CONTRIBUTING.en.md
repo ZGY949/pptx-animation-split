@@ -17,8 +17,8 @@ If you have a real presentation you are permitted to use, also perform targeted 
 Current directory structure:
 
 ```text
-pptx_animation_split/  Conversion engine, validation, and command-line interface
-skills/                 Skill instructions, launcher and UI metadata; no second engine
+pptx_animation_split/  Compatibility entry for the source module command
+skills/                 Complete Skill; the only engine is in scripts/pptx_animation_split/
 tests/                 Regression and file-operation tests
 examples/              Demonstration decks suitable for public sharing
 docs/                  Source baseline, limitations, validation, and release preparation
@@ -29,9 +29,18 @@ The Chinese project homepage is `README.md`, and its English version is `README.
 
 ## Keep the tool and Skill synchronized
 
-Maintain the engine only in `pptx_animation_split/`. The source Skill's `scripts/run.py` calls it directly; packaging copies that same engine into both bundles. Editing `skills/pptx-animation-split/SKILL.md` does not automatically change the Python algorithm. Develop in the source project rather than an extracted release bundle.
+Maintain the engine only in `skills/pptx-animation-split/scripts/pptx_animation_split/`. The root `pptx_animation_split/__init__.py` preserves `python3 -m pptx_animation_split` from source; the wheel installs the maintained engine directly and the tool ZIP is generated from it. Standard skills CLI installation copies the complete Skill, including its engine and resources. Editing `SKILL.md` does not automatically change Python behavior. Develop in maintained source rather than an extracted release bundle.
 
-Maintain the version only in `pptx_animation_split/__init__.py`; the plugin's SemVer representation is generated from it. Maintain installation and removal instructions in `docs/TOOL*.md` and `docs/SKILL*.md`, which become each bundle's README. Limitations and attribution are also generated from the maintained documents.
+Maintain the version only in the engine's `_version.py`; plugin SemVer is derived from it. The maintained Chinese instructions are `skills/pptx-animation-split/SKILL.md`, with English in `SKILL.en.md`. Installation guides live in `docs/TOOL*.md` and `docs/SKILL_INSTALL*.md`. Root documents remain authoritative for limitations, attribution and license. Commit the generated Skill resources and `bundle.json` together so GitHub installation is self-contained. `.gitattributes` uses LF for text to reduce checkout-induced hash differences.
+
+After editing the engine, Skill instructions or shared documents, synchronize and check:
+
+```sh
+python3 tools/sync_skill.py
+python3 tools/sync_skill.py --check
+```
+
+Synchronization generates references, license files and the inventory, not a second engine. `--check` is read-only; official and local builds reject unsynchronized resources. Avoid naming installation guides `SKILL.md` elsewhere in the repository, because installers may scan them as additional skill entry points.
 
 Build for local testing into a new output directory:
 

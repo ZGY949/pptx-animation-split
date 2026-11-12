@@ -4,7 +4,8 @@ import posixpath
 import zipfile
 import xml.etree.ElementTree as ET
 
-from ._core import A, CT, MC, P, R, VML, SHAPE_TAGS, active_animation_groups, all_animation_groups, animation_visibility, apply_emphasis, parse_slide_animation, relationship_part, resolve_part, scale_group_text, slide_order
+from ._core import A, CT, MC, P, R, VML, SHAPE_TAGS, active_animation_groups, all_animation_groups, animation_visibility, apply_emphasis, clone_and_render, parse_slide_animation, relationship_part, resolve_part, scale_group_text, slide_order
+from ._static import groups_for_state, static_state_plan
 
 
 def signature(element):
@@ -287,7 +288,9 @@ def verify(src, dst, log=print, click_orders=None):
             warnings.extend('%s：%s' % (name, note) for note in notes)
             previous = None
             start = expected_count
-            for step in range(-1, len(groups)):
+            states, state_notices = static_state_plan(source.read(name), groups, slide_size, clone_and_render)
+            notices.extend('%s：%s' % (name, notice) for notice in state_notices)
+            for step, prefix in states:
                 output_index = expected_count
                 expected_count += 1
                 if output_index >= len(output_slides):
@@ -298,7 +301,8 @@ def verify(src, dst, log=print, click_orders=None):
                     errors.append('输出第%d页仍有动画' % (output_index + 1))
                 if any(True for _ in actual.iter(P + 'transition')):
                     errors.append('输出第%d页仍有切换或自动翻页设置' % (output_index + 1))
-                state_errors = check_state(original, actual, groups, step, slide_size)
+                view = groups_for_state(groups, step, prefix)
+                state_errors = check_state(original, actual, view, step, slide_size)
                 state_errors.extend(check_legacy_state(source, name, original, output, output_slides[output_index], actual))
                 errors.extend('输出第%d页：%s' % (output_index + 1, error) for error in state_errors)
                 current = signature(actual.find(P + 'cSld/' + P + 'spTree'))

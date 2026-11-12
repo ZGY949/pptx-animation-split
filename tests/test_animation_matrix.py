@@ -73,7 +73,7 @@ class AnimationMatrixTests(unittest.TestCase):
             with self.subTest(kind=kind):
                 events = [effect(2, 'exit'), effect(2, trigger='clickEffect'), effect(2, 'exit', trigger='afterEffect', delay=400), effect(2)]
                 output = self.convert(slide([(2, kind)], events))
-                self.assertEqual(['2' in object_ids(page) for page in output], [True, False, False, True])
+                self.assertEqual(['2' in object_ids(page) for page in output], [True, False, True, False, True])
 
     def test_automatic_entrance_is_settled_before_first_click(self):
         output = self.convert(slide([(2, 'text'), (3, 'picture')], [effect(2, trigger='afterEffect', delay=5000), effect(3)]))

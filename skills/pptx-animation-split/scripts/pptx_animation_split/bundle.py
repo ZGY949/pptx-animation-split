@@ -9,7 +9,8 @@ def file_hashes(root):
     return {
         path.relative_to(root).as_posix(): hashlib.sha256(path.read_bytes()).hexdigest()
         for path in sorted(root.rglob('*'))
-        if path.is_file() and '__pycache__' not in path.parts and path.suffix not in {'.pyc', '.pyo'}
+        if path.is_file() and path.name != '.DS_Store' and path.suffix not in {'.pyc', '.pyo'}
+        and not any(part in {'__pycache__', '.git'} or part.endswith(('.egg-info', '.dist-info')) for part in path.relative_to(root).parts)
     }
 
 

@@ -1,5 +1,4 @@
 import argparse
-import ast
 import hashlib
 import json
 from pathlib import Path
@@ -17,6 +16,7 @@ sys.path.insert(0, str(ROOT))
 from pptx_animation_split.bundle import file_hashes, verify_bundle
 from pptx_animation_split.updates import CLI_API, REPOSITORY, plugin_version
 from tools.package_source import source_files
+from tools.sync_skill import ENGINE_RELATIVE, bundle_manifest, copy_document, project_version, sync_skill
 
 
 SKILL = 'pptx-animation-split'
@@ -33,27 +33,6 @@ def copy_file(source, destination):
     shutil.copyfile(source, destination)
 
 
-def copy_document(source, destination):
-    text = source.read_text(encoding='utf-8')
-    if source.name in {'TOOL.md', 'TOOL.en.md', 'SKILL.md', 'SKILL.en.md'} and source.parent.name == 'docs':
-        stem = source.name.split('.')[0]
-        for old, new in {
-            stem + '.md': 'README.md', stem + '.en.md': 'README.en.md',
-            '../LICENSE': 'LICENSE', '../ATTRIBUTION.md': 'ATTRIBUTION.md', '../ATTRIBUTION.en.md': 'ATTRIBUTION.en.md',
-            'LIMITATIONS.md': 'docs/LIMITATIONS.md', 'LIMITATIONS.en.md': 'docs/LIMITATIONS.en.md',
-        }.items():
-            text = text.replace('](' + old + ')', '](' + new + ')')
-    for old, target in {
-        'docs/source-baseline.json': 'docs/source-baseline.json',
-        'VALIDATION.md': 'docs/VALIDATION.md',
-        'VALIDATION.en.md': 'docs/VALIDATION.en.md',
-        '../README.en.md': 'README.en.md',
-    }.items():
-        text = text.replace('](' + old + ')', '](' + REPOSITORY + '/blob/main/' + target + ')')
-    destination.parent.mkdir(parents=True, exist_ok=True)
-    destination.write_text(text, encoding='utf-8')
-
-
 def source_state(root):
     try:
         commit = subprocess.check_output(['git', 'rev-parse', 'HEAD'], cwd=root, text=True, stderr=subprocess.DEVNULL).strip()
@@ -61,16 +40,6 @@ def source_state(root):
         return {'commit': commit, 'dirty': dirty}
     except (OSError, subprocess.CalledProcessError):
         return {'commit': None, 'dirty': True}
-
-
-def project_version(root):
-    tree = ast.parse((root / 'pptx_animation_split' / '__init__.py').read_text(encoding='utf-8'))
-    for node in tree.body:
-        if isinstance(node, ast.Assign) and any(isinstance(target, ast.Name) and target.id == '__version__' for target in node.targets):
-            value = ast.literal_eval(node.value)
-            plugin_version(value)
-            return value
-    raise ValueError('找不到项目版本号')
 
 
 def python_requirement(root):
@@ -81,15 +50,9 @@ def python_requirement(root):
     return [int(part) for part in match.groups()]
 
 
-def bundle_manifest(root, kind, version):
-    write_json(root / 'bundle.json', {
-        'schema_version': 1, 'kind': kind, 'version': version, 'files': file_hashes(root),
-    })
-
-
 def copy_engine(snapshot, destination):
     destination.mkdir(parents=True)
-    engine = snapshot / 'pptx_animation_split'
+    engine = snapshot / ENGINE_RELATIVE
     for path in sorted(engine.rglob('*')):
         if path.is_file():
             copy_file(path, destination / path.relative_to(engine))
@@ -119,11 +82,10 @@ def make_packages(snapshot, directory, version):
     for path in (snapshot / 'skills' / SKILL).rglob('*'):
         if path.is_file():
             copy_file(path, skill / path.relative_to(snapshot / 'skills' / SKILL))
-    copy_engine(snapshot, skill / 'scripts/pptx_animation_split')
     add_licenses(snapshot, skill)
     add_licenses(snapshot, plugin)
     for suffix in ('', '.en'):
-        copy_document(snapshot / 'docs' / ('SKILL' + suffix + '.md'), plugin / ('README' + suffix + '.md'))
+        copy_document(snapshot / 'docs' / ('SKILL_INSTALL' + suffix + '.md'), plugin / ('README' + suffix + '.md'))
         copy_document(snapshot / 'docs' / ('LIMITATIONS' + suffix + '.md'), skill / ('references/LIMITATIONS' + suffix + '.md'))
     copy_file(snapshot / 'examples/click-order.json', skill / 'references/click-order.json')
     bundle_manifest(skill, 'skill', version)
@@ -158,7 +120,7 @@ def archive_directory(root, destination):
 
 
 def validate_packages(packages, snapshot, directory, version):
-    engine_hashes = file_hashes(snapshot / 'pptx_animation_split')
+    engine_hashes = file_hashes(snapshot / ENGINE_RELATIVE)
     report = {}
     samples = {'demo.pptx': 3, 'animation-cases.pptx': 13, 'interaction-repeat-cases.pptx': 8}
     for kind, package in packages.items():
@@ -224,6 +186,7 @@ def build_release(destination, *, local=False, root=ROOT):
             raise ValueError('正式构建需要指向当前提交的 v%s 标签' % version) from error
         if tag_commit != state['commit']:
             raise ValueError('版本标签没有指向当前提交')
+    sync_skill(root, check=True)
     paths = list(source_files(root))
     before = {path.relative_to(root).as_posix(): hashlib.sha256(path.read_bytes()).hexdigest() for path in paths}
     destination.parent.mkdir(parents=True, exist_ok=True)

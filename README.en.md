@@ -2,7 +2,7 @@
 
 [简体中文](README.md) | **English**
 
-Split an animated PPTX into static slides. Each source slide produces a snapshot after its initial automatic animations finish, followed by a snapshot at the end of each click step. Use the result to share course slides, print them, or export them to PDF in presentation software.
+Split an animated PPTX into static slides. Keep automatic-animation and click end states, add fully visible states for objects that appear and disappear within one step, and merge unchanged media-control-only steps. Use the result to share course slides, print them, or export them to PDF in presentation software.
 
 This Python tool was developed with AI assistance and inspired by [PPspliT](https://github.com/maxonthegit/PPspliT). It is maintained independently of that project. It edits PPTX files directly, without starting PowerPoint, and is not a PowerPoint add-in.
 
@@ -10,9 +10,17 @@ The project remains an alpha preview supporting a subset of animations. See [Rel
 
 ## Choose a bundle
 
-Each release builds two bundles from one source snapshot: choose `-tool.zip` for direct use or `-skill.zip` for use through an AI. The Skill bundle includes the matching tool and Codex plugin manifests. Each has instructions for its audience; downloading both is unnecessary. See the [tool guide](docs/TOOL.en.md) and [Skill guide](docs/SKILL.en.md) for installation, updates and removal. GitHub's automatically generated Source code ZIP still contains the full project.
+Each release builds two bundles from one source snapshot: choose `-tool.zip` for direct use or `-skill.zip` for use through an AI. The Skill bundle includes the matching tool and Codex plugin manifests. Each has instructions for its audience; downloading both is unnecessary. See the [tool guide](docs/TOOL.en.md) and [Skill guide](docs/SKILL_INSTALL.en.md) for installation, updates and removal. GitHub's automatically generated Source code ZIP still contains the full project.
 
 Find the tool and Skill bundles in the [v0.1.0a4 preview](https://github.com/ZGY949/pptx-animation-split/releases/tag/v0.1.0a4). The existing `v0.1.0a3` still offers only GitHub's source downloads and requires a manual first upgrade. The source workflow below remains available.
+
+For use through an AI, install the complete Skill directly from your project:
+
+```sh
+npx skills add ZGY949/pptx-animation-split --skill pptx-animation-split
+```
+
+Choose your AI client when prompted. Installation is project-local by default; add `-g` for user-level installation. The installer needs Node.js 22.20 or later and npm; splitting needs Python 3.10 or later. Update a project installation with `npx skills update pptx-animation-split -p -y`. The Skill directory includes the single maintained engine, bilingual instructions, license and references and does not depend on the original checkout location.
 
 ## Quick start
 
@@ -51,7 +59,7 @@ python3 -m pptx_animation_split split examples/interaction-repeat-cases.pptx tri
 python3 -m pptx_animation_split verify examples/interaction-repeat-cases.pptx trigger-split.pptx --click-order examples/click-order.json
 ```
 
-For finite repetitions, complete cycles determine duration and the order of visibility changes. Each click still produces one state; repeating an effect does not add a slide for every repetition. An infinite loop has no unique final state, so the tool keeps a representative state after one completed cycle and explains this in the log. It cannot reproduce the appearance of a loop stopped at an arbitrary moment. Unsupported cases, such as stopping partway through a cycle or accumulating repeated effects, still prevent output generation.
+For finite repetitions, complete cycles determine duration and the order of visibility changes. Repeating an effect does not add a slide for every repetition; an object that appears and disappears within one step also gets a fully visible state. An infinite loop has no unique final state, so the tool keeps a representative state after one completed cycle and explains this in the log. It cannot reproduce the appearance of a loop stopped at an arbitrary moment. Unsupported cases, such as stopping partway through a cycle or accumulating repeated effects, still prevent output generation.
 
 Finite-repeat and infinite-loop examples have been played in the local macOS WPS environment. The object-trigger input could not be played successfully in that environment, so comparison against the original presentation application remains incomplete for object triggers. Small pixel differences in enlarged text also remain unresolved. See the [validation record](docs/VALIDATION.en.md).
 
@@ -81,7 +89,7 @@ Text inspection also reads text in transparent placeholder paragraphs. It cannot
 ## Supported features
 
 - Entrance and exit effects for text, images, shapes, and groups, plus some animations that show or hide individual paragraphs.
-- Combinations of On Click, With Previous, After Previous, and delays. Effects that run automatically when a slide opens are included in its first static state.
+- Combinations of On Click, With Previous, After Previous, and delays. Transient entrance/exit objects retain their visible and restored states. Only unchanged media-control-only steps are merged.
 - Experimental object-trigger expansion, optional custom click order, finite whole-cycle repetitions, and a representative state for infinite loops.
 - Formula compatibility branches, previews of legacy embedded equations, and paragraph placeholders. Original structures are preserved rather than rewriting equations as plain text.
 - Some text-color changes, rotations by a specified angle, and image and shape scaling. Uniform text scaling is supported when font sizes are explicitly defined locally.
