@@ -107,6 +107,62 @@ def shape_elements(container):
                 yield r
 
 
+def opacity_emphasis(effect):
+    """Recognize the paired, fixed opacity controls emitted by PowerPoint."""
+    if effect.get('presetClass') != 'emph' or effect.get('presetID') != '9':
+        return None
+    behaviors = effect.find(q('childTnLst'))
+    if behaviors is None or [item.tag for item in behaviors] != [q('set'), q('animEffect')]:
+        return None
+    setting, image = behaviors
+    value = setting.find(q('to') + '/' + q('strVal'))
+    if (value is None or [node.text for node in setting.iter(q('attrName'))] != ['style.opacity']
+            or image.get('filter') != 'image'):
+        return None
+    raw = value.get('val', '')
+    match = re.fullmatch(r'opacity:\s*((?:0(?:\.\d+)?|1(?:\.0+)?))', image.get('prLst', ''))
+    if not match or not re.fullmatch(r'(?:0(?:\.\d+)?|1(?:\.0+)?)', raw) or float(raw) != float(match[1]):
+        return None
+    nodes = [item.find(q('cBhvr') + '/' + q('cTn')) for item in behaviors]
+    if any(node is None or node.get('dur') != 'indefinite' or
+           set(node.attrib) - {'id', 'dur'} or len(node) for node in nodes):
+        return None
+    return {'kind': 'opacity', 'amount': round(float(raw) * 100000)}, nodes
+
+
+def supports_solid_opacity(shape):
+    if shape.tag not in (q('sp'), q('grpSp')):
+        return False
+    for child in shape:
+        if child.tag in (q('sp'), q('grpSp')):
+            if not supports_solid_opacity(child):
+                return False
+        elif child.tag not in (q('nvGrpSpPr'), q('nvSpPr'), q('grpSpPr'), q('spPr'), q('txBody'), q('style')):
+            return False
+    if any(node.tag in {A + tag for tag in ('gradFill', 'pattFill', 'blipFill', 'grpFill')} for node in shape.iter()):
+        return False
+    props = shape.find(q('spPr'))
+    if props is not None and not any(props.find(A + tag) is not None for tag in ('solidFill', 'noFill')):
+        return False
+    for run in shape.iter(A + 'r'):
+        if run.find(A + 'rPr/' + A + 'solidFill') is None:
+            return False
+    return True
+
+
+def apply_solid_opacity(shape, amount):
+    # Change explicit painted colors, leaving transparent fills and geometry alone.
+    for section in (q('spPr'), q('txBody')):
+        props = shape.find(section)
+        if props is not None:
+            for solid in props.iter(A + 'solidFill'):
+                if len(solid):
+                    ET.SubElement(solid[0], A + 'alphaMod', val=str(amount))
+    for child in shape:
+        if child.tag in (q('sp'), q('grpSp')):
+            apply_solid_opacity(child, amount)
+
+
 def emphasis_changes(effect):
     changes = []
     behaviors = effect.find(q('childTnLst'))
@@ -114,6 +170,9 @@ def emphasis_changes(effect):
         return None
     if effect.get('fill') == 'remove' or effect.get('autoRev') in ('1', 'true'):
         return []
+    opacity = opacity_emphasis(effect)
+    if opacity is not None:
+        return [opacity[0]]
     for behavior in behaviors:
         timing = behavior.find(q('cBhvr') + '/' + q('cTn'))
         if timing is not None and (timing.get('fill') == 'remove' or timing.get('autoRev') in ('1', 'true')):
@@ -236,6 +295,8 @@ def _parse_linear_animation(root):
         if node.get('spd') not in (None, '100000') or node.get('tmFilter') or node.get('evtFilter'):
             notes.append('自定义时间速度或时间筛选尚未支持')
     time_nodes = {node.get('id'): node for node in timing.iter(q('cTn')) if node.get('id')}
+    fixed_opacity_nodes = {node for effect in time_nodes.values()
+                           if (opacity := opacity_emphasis(effect)) is not None for node in opacity[1]}
     starts = {}
     ends = {}
     pending = set()
@@ -251,7 +312,10 @@ def _parse_linear_animation(root):
             return 0
         pending.add(key)
         duration = node.get('dur')
-        if duration is not None and duration.isdecimal():
+        if node in fixed_opacity_nodes:
+            # The property changes immediately and is then held.
+            simple = 0
+        elif duration is not None and duration.isdecimal():
             simple = int(duration)
         else:
             if duration not in (None, '0'):
@@ -296,6 +360,8 @@ def _parse_linear_animation(root):
             reference = condition.find(q('tn'))
             referenced = time_nodes.get(reference.get('val')) if reference is not None else None
             if event in ('onBegin', 'onEnd') and referenced is not None:
+                if event == 'onEnd' and referenced in fixed_opacity_nodes:
+                    notes.append('透明度保持节点没有明确的结束时间')
                 origin = start_time(referenced) if event == 'onBegin' else end_time(referenced)
                 if event == 'onEnd' and repeat_values.get(id(referenced), (0, 1, False))[2]:
                     notes.append('依赖无限循环的结束事件没有确定时间，尚未支持')
@@ -346,6 +412,10 @@ def _parse_linear_animation(root):
                 notes.append('动画目标不唯一或缺失 (preset %s)' % ec.get('presetID'))
             tree = root.find(q('cSld') + '/' + q('spTree'))
             matches = [element for _, element, sid in shape_elements(tree) if sid == spid] if tree is not None else []
+            if any(change['kind'] == 'opacity' for change in changes or []) and not all(
+                supports_solid_opacity(shape) for shape in matches
+            ):
+                changes = None
             if not matches:
                 notes.append('动画目标对象不存在：%s' % spid)
             if prg is not None and (prg[0] < 0 or prg[1] < prg[0] or any(
@@ -537,7 +607,9 @@ def scale_group_text(shape, factor):
 
 def apply_emphasis(shape, effect, slide_size=None, original_shape=None):
     for change in effect.get('changes') or []:
-        if change['kind'] in ('rotation', 'translation', 'scale'):
+        if change['kind'] == 'opacity':
+            apply_solid_opacity(shape, change['amount'])
+        elif change['kind'] in ('rotation', 'translation', 'scale'):
             transform = shape.find(P + 'spPr/' + A + 'xfrm')
             if transform is None:
                 transform = shape.find(P + 'grpSpPr/' + A + 'xfrm')

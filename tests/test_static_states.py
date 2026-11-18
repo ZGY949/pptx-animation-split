@@ -28,6 +28,37 @@ class StaticReadingTests(unittest.TestCase):
     def visible(self, root):
         return {key[0] for key in shape_index(root)}
 
+    def test_fixed_opacity_changes_group_fills_and_text_at_click(self):
+        root = slide([(2, 'group')], [effect(2, 'emph', preset=9)])
+        group = next(shape for shape in root.iter(P + 'grpSp'))
+        group.remove(group.find(P + 'pic'))
+        child = group.find(P + 'sp')
+        for run in child.iter(A + 'rPr'):
+            color = ET.SubElement(ET.SubElement(run, A + 'solidFill'), A + 'srgbClr', val='FF0000')
+            ET.SubElement(color, A + 'alpha', val='80000')
+        wrapper = next(node for node in root.iter(P + 'cTn') if node.get('presetID') == '9')
+        behaviors = wrapper.find(P + 'childTnLst')
+        behaviors.clear()
+        for node_id, tag in (('101', 'set'), ('102', 'animEffect')):
+            behavior = ET.SubElement(behaviors, P + tag)
+            common = ET.SubElement(behavior, P + 'cBhvr')
+            ET.SubElement(common, P + 'cTn', id=node_id, dur='indefinite')
+            ET.SubElement(ET.SubElement(common, P + 'tgtEl'), P + 'spTgt', spid='2')
+            if tag == 'set':
+                ET.SubElement(ET.SubElement(common, P + 'attrNameLst'), P + 'attrName').text = 'style.opacity'
+                ET.SubElement(ET.SubElement(behavior, P + 'to'), P + 'strVal', val='0.5')
+            else:
+                behavior.attrib.update(filter='image', prLst='opacity: 0.5')
+        write_deck(self.source, [root])
+        _counts, notes, total = split_file(self.source, self.output, log=lambda _: None)
+        self.assertEqual((notes, total), ([], 2))
+        self.assertEqual(verify(self.source, self.output, log=lambda _: None), [])
+        with zipfile.ZipFile(self.output) as archive:
+            before, after = [ET.fromstring(archive.read(part)) for part in slide_order(archive)]
+        self.assertEqual(list(before.iter(A + 'alphaMod')), [])
+        self.assertEqual([node.get('val') for node in after.iter(A + 'alphaMod')], ['50000'] * 4)
+        self.assertEqual([node.get('val') for node in after.iter(A + 'alpha')], ['80000'] * 3)
+
     def test_flash_has_visible_and_restored_states_without_revealing_future_objects(self):
         pages = self.split([slide([(2, 'group'), (3, 'text')], [
             effect(2), effect(2, 'exit', 'afterEffect'), effect(3),

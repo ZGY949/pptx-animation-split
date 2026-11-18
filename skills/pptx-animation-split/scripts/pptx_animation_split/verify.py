@@ -4,7 +4,7 @@ import posixpath
 import zipfile
 import xml.etree.ElementTree as ET
 
-from ._core import A, CT, MC, P, R, VML, SHAPE_TAGS, active_animation_groups, all_animation_groups, animation_visibility, apply_emphasis, clone_and_render, parse_slide_animation, relationship_part, resolve_part, scale_group_text, slide_order
+from ._core import A, CT, MC, P, R, VML, SHAPE_TAGS, active_animation_groups, all_animation_groups, animation_visibility, apply_emphasis, apply_solid_opacity, clone_and_render, parse_slide_animation, relationship_part, resolve_part, scale_group_text, slide_order
 from ._static import groups_for_state, static_state_plan
 
 
@@ -122,6 +122,8 @@ def check_state(source_root, output_root, groups, step, slide_size=None):
                     for change in effect.get('changes') or []:
                         if change['kind'] == 'scale':
                             scale_group_text(original, change['x'] / 100000)
+                        elif change['kind'] == 'opacity':
+                            apply_solid_opacity(original, change['amount'])
                 if effect['cls'] in ('emph', 'path') and effect['spid'] == sid and effect.get('changes'):
                     apply_emphasis(original, effect, slide_size, reference)
         for prop in ('spPr', 'grpSpPr', 'xfrm', 'blipFill', 'style'):

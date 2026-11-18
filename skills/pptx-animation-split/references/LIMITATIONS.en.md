@@ -10,6 +10,8 @@ Visibility changes within a group are replayed in start- and end-time order whil
 
 When an unsupported structure is detected, the tool stops without producing an output by default. `--allow-partial` is only for creating a draft that must be checked manually slide by slide; it returns exit code 3. Passing structural validation does not establish that these effects have been reproduced. The parser may still miss unsupported cases.
 
+- Fixed-opacity emphasis (PowerPoint preset 9) supports shapes and groups with explicit solid fills and text colors. Output preserves the static state after a click. Pictures, gradients, animated transparency, and events waiting for a held opacity node to end remain unsupported.
+
 ## Specific support conditions
 
 | Type | Current behavior or conditions |
