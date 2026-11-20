@@ -12,7 +12,7 @@ The project remains an alpha preview supporting a subset of animations. See [Rel
 
 Each release builds two bundles from one source snapshot: choose `-tool.zip` for direct use or `-skill.zip` for use through an AI. The Skill bundle includes the matching tool and Codex plugin manifests. Each has instructions for its audience; downloading both is unnecessary. See the [tool guide](docs/TOOL.en.md) and [Skill guide](docs/SKILL_INSTALL.en.md) for installation, updates and removal. GitHub's automatically generated Source code ZIP still contains the full project.
 
-Find the tool and Skill bundles in the [v0.1.0a4 preview](https://github.com/ZGY949/pptx-animation-split/releases/tag/v0.1.0a4). The existing `v0.1.0a3` still offers only GitHub's source downloads and requires a manual first upgrade. The source workflow below remains available.
+Find the tool and Skill bundles in the [v0.1.0a5 preview](https://github.com/ZGY949/pptx-animation-split/releases/tag/v0.1.0a5). The existing `v0.1.0a3` still offers only GitHub's source downloads and requires a manual first upgrade. The source workflow below remains available.
 
 For use through an AI, install the complete Skill directly from your project:
 

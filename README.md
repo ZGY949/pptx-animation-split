@@ -12,7 +12,7 @@
 
 同一次发布会从一份源码生成两个包：直接使用选 `-tool.zip`，通过 AI 使用选 `-skill.zip`。Skill 包自带同版本工具，包含 Codex 插件清单。两者分别提供适用的说明，不需要同时下载。安装、更新和卸载见[工具包说明](docs/TOOL.md)与 [Skill 说明](docs/SKILL_INSTALL.md)。GitHub 自动生成的 Source code ZIP 仍包含整个源码项目。
 
-工具包与 Skill 包见 [v0.1.0a4 预览版](https://github.com/ZGY949/pptx-animation-split/releases/tag/v0.1.0a4)。已有 `v0.1.0a3` 仍仅提供 GitHub 源码下载，首次升级需要手动下载；下面的源码使用方法继续可用。
+工具包与 Skill 包见 [v0.1.0a5 预览版](https://github.com/ZGY949/pptx-animation-split/releases/tag/v0.1.0a5)。已有 `v0.1.0a3` 仍仅提供 GitHub 源码下载，首次升级需要手动下载；下面的源码使用方法继续可用。
 
 通过 AI 使用时，也可在项目目录直接安装完整 Skill：
 

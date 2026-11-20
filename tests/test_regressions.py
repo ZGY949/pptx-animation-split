@@ -47,7 +47,10 @@ def legacy_fixture():
         graphic = ET.SubElement(frame, A + 'graphic')
         data = ET.SubElement(graphic, A + 'graphicData')
         ET.SubElement(data, P + 'oleObj', {'spid': '_shape' + sid, R + 'id': 'ole' + sid})
-        ET.SubElement(drawing, VML + 'shape', id='_shape' + sid, style='left:%spt;top:2pt' % sid)
+        preview = ET.SubElement(drawing, VML + 'shape', id='_shape' + sid, style='left:%spt;top:2pt' % sid)
+        if sid == '1':
+            preview.set('id', '对象 1')
+            preview.set('{urn:schemas-microsoft-com:office:office}spid', '_shape1')
         ET.SubElement(relations, '{' + PR + '}Relationship', Id='ole' + sid, Type='example/oleObject', Target='../embeddings/ole%s.bin' % sid)
     buffer = io.BytesIO()
     with zipfile.ZipFile(buffer, 'w') as archive:

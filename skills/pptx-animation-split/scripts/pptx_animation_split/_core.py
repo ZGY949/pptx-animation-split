@@ -749,6 +749,13 @@ def serialize(root, namespaces=None):
     return b'<?xml version="1.0" encoding="UTF-8" standalone="yes"?>\r\n' + data
 
 
+def legacy_shape_ids(element):
+    if element.tag not in (VML + 'shape', VML + 'group'):
+        return set()
+    office_spid = '{urn:schemas-microsoft-com:office:office}spid'
+    return {value for value in (element.get(office_spid), element.get('id')) if value}
+
+
 def filter_legacy_drawings(source, source_part, source_root, rendered_root, slide_number, relationships, resources):
     source_objects = {element.get('spid') for element in source_root.iter(P + 'oleObj') if element.get('spid')}
     visible_objects = {element.get('spid') for element in rendered_root.iter(P + 'oleObj') if element.get('spid')}
@@ -769,7 +776,7 @@ def filter_legacy_drawings(source, source_part, source_root, rendered_root, slid
         parents = {child: parent for parent in drawing.iter() for child in parent}
         changed = False
         for element in list(drawing.iter()):
-            if element.get('id') in hidden_objects and element in parents:
+            if legacy_shape_ids(element) & hidden_objects and element in parents:
                 parents[element].remove(element)
                 changed = True
         if not changed:

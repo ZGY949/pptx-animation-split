@@ -4,7 +4,7 @@ import posixpath
 import zipfile
 import xml.etree.ElementTree as ET
 
-from ._core import A, CT, MC, P, R, VML, SHAPE_TAGS, active_animation_groups, all_animation_groups, animation_visibility, apply_emphasis, apply_solid_opacity, clone_and_render, parse_slide_animation, relationship_part, resolve_part, scale_group_text, slide_order
+from ._core import A, CT, MC, P, R, SHAPE_TAGS, active_animation_groups, all_animation_groups, animation_visibility, apply_emphasis, apply_solid_opacity, clone_and_render, parse_slide_animation, legacy_shape_ids, relationship_part, resolve_part, scale_group_text, slide_order
 from ._static import groups_for_state, static_state_plan
 
 
@@ -167,8 +167,8 @@ def legacy_shapes(archive, slide_part):
             continue
         part = posixpath.normpath(posixpath.join(posixpath.dirname(slide_part), relation.get('Target')))
         for element in ET.fromstring(archive.read(part)).iter():
-            if element.tag in (VML + 'shape', VML + 'group') and element.get('id'):
-                result[element.get('id')] = signature(element)
+            for shape_id in legacy_shape_ids(element):
+                result[shape_id] = signature(element)
     return result
 
 
